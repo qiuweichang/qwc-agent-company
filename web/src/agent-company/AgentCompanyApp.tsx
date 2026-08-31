@@ -108,8 +108,14 @@ const hasRoleArtifact = (entries: ConversationEntry[], roleHint: string) =>
 
 /** Builds a project-specific first hypothesis so the PM asks a focused question, not for a rewrite. */
 const buildProjectKickoff = (projectName: string) => {
-  if (/(大屏|看板|数据|分析|监控)/u.test(projectName)) {
+  if (/(警务|公安|警情|治安)/u.test(projectName)) {
+    return `我先基于「${projectName}」做了初步判断：它大概率面向公安指挥和管理人员，用于汇总警情态势、警力分布、事件点位与设备状态，帮助值班人员快速识别风险并安排处置优先级。后续需要重点澄清使用场景、数据来源、刷新频率和处置闭环。\n\n第一个关键问题：主要使用者是谁，他们看到异常警情后最先需要做出的一个决策是什么？`
+  }
+  if (/(交通|运输|物流|公交|道路)/u.test(projectName)) {
     return `我先基于「${projectName}」做了初步判断：它大概率用于汇总关键运输指标、发现异常并辅助调度决策，后续需要澄清数据来源、刷新频率和核心指标，而不是先讨论页面颜色。\n\n第一个关键问题：谁会在什么工作场景中查看这个大屏，他们最需要据此做出的一个决策是什么？`
+  }
+  if (/(大屏|看板|数据|分析|监控)/u.test(projectName)) {
+    return `我先基于「${projectName}」做了初步判断：它大概率用于汇总关键业务指标、发现异常并辅助实时决策，后续需要澄清数据来源、刷新频率和核心指标，而不是先讨论页面颜色。\n\n第一个关键问题：谁会在什么工作场景中查看这个大屏，他们最需要据此做出的一个决策是什么？`
   }
   if (/(管理|平台|系统|后台)/u.test(projectName)) {
     return `我先基于「${projectName}」做了初步判断：这是一个围绕业务对象和操作流程的管理工具，需求重点会落在使用者、核心数据、权限边界和可验收流程。\n\n第一个关键问题：最主要的使用者是谁，他每天最需要完成的一个核心任务是什么？`
