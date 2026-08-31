@@ -37,14 +37,16 @@ export const ArtifactFrame = ({ path, title, workspaceId }: ArtifactFrameProps) 
       <div className="ac-artifact__head">
         <span className="ac-artifact__kind">ARCHIFY · HTML</span>
         <strong>{title}</strong>
-        <button
-          type="button"
+        <a
           className="ac-icon-button"
           title="在新窗口查看完整演示图"
-          onClick={() => window.open(standaloneSource, '_blank', 'noopener,noreferrer')}
+          aria-label="在新窗口查看完整演示图"
+          href={standaloneSource}
+          rel="noopener noreferrer"
+          target="_blank"
         >
           <ExternalLink size={15} />
-        </button>
+        </a>
       </div>
       <div className="ac-artifact__viewport">
         <iframe
