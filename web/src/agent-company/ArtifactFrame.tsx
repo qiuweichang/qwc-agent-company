@@ -18,6 +18,9 @@ const isImageArtifact = (path: string) => /\.(?:png|jpe?g|webp|svg)$/i.test(path
 export const ArtifactFrame = ({ path, title, workspaceId }: ArtifactFrameProps) => {
   const [zoom, setZoom] = useState(1)
   const source = workspaceId ? getWorkspaceArtifactUrl(workspaceId, path) : path
+  // Resolve against the current origin before opening a new tab. Some desktop
+  // browser hosts otherwise treat a root-relative popup URL as the app root.
+  const standaloneSource = new URL(source, window.location.href).toString()
 
   if (isImageArtifact(path)) {
     return (
@@ -38,7 +41,7 @@ export const ArtifactFrame = ({ path, title, workspaceId }: ArtifactFrameProps) 
           type="button"
           className="ac-icon-button"
           title="在新窗口查看完整演示图"
-          onClick={() => window.open(source, '_blank', 'noopener,noreferrer')}
+          onClick={() => window.open(standaloneSource, '_blank', 'noopener,noreferrer')}
         >
           <ExternalLink size={15} />
         </button>
