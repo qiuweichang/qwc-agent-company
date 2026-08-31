@@ -52,7 +52,6 @@ import {
   saveActiveWorkspaceId,
   saveStitchConfiguration,
   sendProjectMessage,
-  startProjectPlanning,
   transitionProjectWorkflow,
   updateRoleTemplate,
 } from '../api.js'
@@ -339,12 +338,17 @@ export const AgentCompanyApp = () => {
     }
   }
 
-  /** Creates the workspace, seeds the focused six-role team and selects it. */
+  /**
+   * Creates the workspace and its focused six-role team without starting a CLI.
+   * The planning screen provides the first project hypothesis locally; keeping every
+   * member idle prevents a late department-manager kickoff from duplicating the
+   * product manager's first user-directed assignment.
+   */
   const createProject = async (input: { name: string; path: string }) => {
     setBusy(true)
     try {
       const workspace = await createWorkspace({
-        autostart_orchestrator: true,
+        autostart_orchestrator: false,
         command_preset_id: 'claude',
         name: input.name,
         path: input.path,
@@ -363,16 +367,10 @@ export const AgentCompanyApp = () => {
           })
         )
       )
-      if (workspace.orchestrator_start.ok) await startProjectPlanning(workspace.id)
       setWorkspaces((current) => [...(current ?? []), workspace])
       await selectWorkspace(workspace.id)
       setWorkflow(initialWorkflow(workspace.id))
       setShowProjectDialog(false)
-      if (!workspace.orchestrator_start.ok) {
-        throw new Error(
-          workspace.orchestrator_start.error || 'Claude 部门经理启动失败，请检查本机 CLI。'
-        )
-      }
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {

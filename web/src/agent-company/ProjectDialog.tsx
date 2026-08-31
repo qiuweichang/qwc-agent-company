@@ -119,7 +119,7 @@ export const ProjectDialog = ({ busy, onClose, onCreate }: ProjectDialogProps) =
             disabled={busy}
             onClick={submit}
           >
-            {busy ? '正在创建…' : '创建并启动部门经理'}
+            {busy ? '正在创建…' : '创建项目'}
           </button>
         </footer>
       </section>
