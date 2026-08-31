@@ -63,6 +63,14 @@ scan, split it before adding unrelated behavior.
 Do not include AI-tool attribution in commits, PR bodies, or comments. Use a
 normal human commit message that explains the change.
 
+### Commit every completed change
+
+After each user-requested code or documentation change, create a dedicated Git
+commit and push it to `origin` before reporting completion. Use Conventional
+Commits such as `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, or `chore:` and
+keep unrelated work in separate commits. Do not amend or rewrite published
+history unless the user explicitly requests it.
+
 ## Verification
 
 Before submitting a non-trivial change, run:
