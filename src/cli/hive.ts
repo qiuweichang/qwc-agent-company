@@ -11,7 +11,6 @@ import { createApp } from '../server/app.js'
 import { readPackageVersion } from '../server/package-version.js'
 import { createRuntimeStore, type RuntimeStore } from '../server/runtime-store.js'
 import { createVersionService, type VersionService } from '../server/version-service.js'
-import { runHiveUpdateCommand } from './hive-update.js'
 
 interface RunHiveCommandResult {
   port: number
@@ -31,16 +30,12 @@ type ListenError = Error & {
 
 export const HIVE_USAGE = [
   'Usage:',
-  '  hive [--port <port>]',
-  '  hive update',
+  '  agent-company [--port <port>]',
   '',
   'Options:',
   '  --port <port>   Bind the local runtime to a specific port (default: 3000).',
   '  -h, --help      Print this help.',
-  '  -v, --version   Print the installed Hive version.',
-  '',
-  'Commands:',
-  '  update          Upgrade Hive in place via `npm install -g`.',
+  '  -v, --version   Print the installed Agent Company version.',
 ].join('\n')
 
 export const handleHiveInfoCommand = (argv: string[]) => {
@@ -68,7 +63,7 @@ const parsePort = (argv: string[]) => {
 
     const value = argv[index + 1]
     if (!value) {
-      throw new Error('Usage: hive [--port <port>]')
+      throw new Error('Usage: agent-company [--port <port>]')
     }
 
     const port = Number.parseInt(value, 10)
@@ -83,32 +78,27 @@ const parsePort = (argv: string[]) => {
   return parsedPort ?? 3000
 }
 
-const resolveDataDir = () => process.env.HIVE_DATA_DIR || join(homedir(), '.config', 'hive')
-
-const maybePrintUpdateHint = async (versionService: VersionService) => {
-  const info = await versionService.getVersionInfo()
-  if (!info.update_available) return
-  console.log(
-    `Hive update available: ${info.current_version} -> ${info.latest_version}. Run: ${info.install_hint}`
-  )
-}
+const resolveDataDir = () =>
+  process.env.AGENT_COMPANY_DATA_DIR ||
+  process.env.HIVE_DATA_DIR ||
+  join(homedir(), '.config', 'agent-company')
 
 const isListenError = (error: unknown): error is ListenError =>
   error instanceof Error && typeof (error as ListenError).code === 'string'
 
 const formatPortInUseMessage = (port: number) =>
   [
-    `Hive could not start because port ${port} is already in use.`,
+    `Agent Company could not start because port ${port} is already in use.`,
     '',
-    'Another Hive instance may already be running:',
+    'Another Agent Company instance may already be running:',
     `  http://127.0.0.1:${port}`,
     '',
     'Options:',
-    '  - Open the existing Hive window.',
+    '  - Open the existing Agent Company window.',
     '  - Stop the process using that port:',
     `      lsof -tiTCP:${port} -sTCP:LISTEN | xargs kill`,
     '  - Start Hive on another port:',
-    `      hive --port ${port + 1}`,
+    `      agent-company --port ${port + 1}`,
   ].join('\n')
 
 const formatListenError = (error: unknown, requestedPort: number) => {
@@ -190,8 +180,7 @@ export const runHiveCommand = async (
   process.once('SIGTERM', gracefulShutdown)
   process.once('SIGINT', gracefulShutdown)
 
-  console.log(`Hive running at http://127.0.0.1:${address.port}`)
-  void maybePrintUpdateHint(versionService).catch(() => {})
+  console.log(`Agent Company running at http://127.0.0.1:${address.port}`)
 
   return {
     port: address.port,
@@ -208,14 +197,7 @@ const isMainModule = process.argv[1]
 
 if (isMainModule) {
   const argv = process.argv.slice(2)
-  if (argv[0] === 'update') {
-    runHiveUpdateCommand(argv.slice(1))
-      .then((code) => process.exit(code))
-      .catch((error) => {
-        console.error(error)
-        process.exit(1)
-      })
-  } else if (handleHiveInfoCommand(argv)) {
+  if (handleHiveInfoCommand(argv)) {
     process.exit(0)
   } else {
     runHiveCommand(argv).catch((error) => {

@@ -17,7 +17,7 @@ import type { AgentSummary } from '../shared/types.js'
  */
 export const ORCHESTRATOR_REMINDER_TAIL =
   '<hive-system-reminder>\n' +
-  'You are the Hive Orchestrator. Reply by either: (a) `team send "<worker-name>" "<task>"` to dispatch follow-up work to a Hive worker, (b) `team cancel --dispatch <id> "<reason>"` to cancel an obsolete dispatch, or (c) plain text to the user. Never call your CLI\'s built-in subagent tools (Task / Explore / etc.) — they bypass Hive and will not appear in the UI.\n' +
+  'You are the Hive Department Manager. Reply by either: (a) `team send "<worker-name>" "<task>"` to dispatch follow-up work to a Hive worker, (b) `team cancel --dispatch <id> "<reason>"` to cancel an obsolete dispatch, or (c) plain text to the user. Never call your CLI\'s built-in subagent tools (Task / Explore / etc.) — they bypass Hive and will not appear in the UI.\n' +
   '</hive-system-reminder>'
 
 /**
@@ -45,9 +45,9 @@ const ORCHESTRATOR_RULES = [
 const WORKER_RULES = [
   '你是 Hive 右侧卡片里的真实 CLI worker，不是你所在 CLI 的内置 subagent。',
   '不要调用 team send，也不要再启动你所在 CLI 的内置 subagent / 子代理工具（如 Task / Explore 等）来替你完成派单。',
-  '完成或阻塞已派发任务时必须用 `team report` 汇报给 Orchestrator。',
+  '完成或阻塞已派发任务时必须用 `team report` 汇报给部门经理。',
   '如果当前没有明确派发任务，只是汇报待命、环境或状态，使用 `team status "<当前状态>"`。',
-  '`team --help` 只用于查命令语法，**绝不是** 汇报手段；其输出不会进入 Orchestrator 视野，跑完后仍需正式调用 `team report` / `team status`。',
+  '`team --help` 只用于查命令语法，**绝不是** 汇报手段；其输出不会进入部门经理视野，跑完后仍需正式调用 `team report` / `team status`。',
   '`team report` / `team status` 报错时会同时打印 USAGE，按 USAGE 修正参数后重试；不要把 `team --help` 当成"自我探查"的替身。',
 ]
 
@@ -80,10 +80,10 @@ export const buildProtocolDoc = (): string =>
     '',
     '## Roles',
     '',
-    '- **Orchestrator** — talks to the user, plans tasks, dispatches to workers',
+    '- **Department Manager** — talks to the user, plans tasks, dispatches to workers',
     '- **Worker** (Coder / Reviewer / Tester / custom) — executes one assigned task and reports back',
     '',
-    '## `team` CLI — orchestrator',
+    '## `team` CLI — department manager',
     '',
     '- `team list` — show workspace members and their status',
     '- `team send "<worker-name>" "<task>"` — dispatch to a worker by name (never id)',
@@ -93,9 +93,9 @@ export const buildProtocolDoc = (): string =>
     '',
     '- `team report "<result>" --dispatch <id>` — report task outcome',
     "- `team report --stdin --dispatch <id>` — same, body from stdin (use `<<'EOF'` heredoc for long bodies)",
-    '- `team status "<state>"` — update orchestrator when no dispatch is active',
+    '- `team status "<state>"` — update the Department Manager when no dispatch is active',
     '',
-    '## Orchestrator rules',
+    '## Department Manager rules',
     '',
     renderRules(ORCHESTRATOR_RULES),
     '',

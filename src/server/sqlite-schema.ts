@@ -13,8 +13,13 @@ import { applySchemaVersion15 } from './sqlite-schema-v15.js'
 import { applySchemaVersion16 } from './sqlite-schema-v16.js'
 import { applySchemaVersion17 } from './sqlite-schema-v17.js'
 import { applySchemaVersion18 } from './sqlite-schema-v18.js'
+import { applySchemaVersion19 } from './sqlite-schema-v19.js'
+import { applySchemaVersion20 } from './sqlite-schema-v20.js'
+import { applySchemaVersion21 } from './sqlite-schema-v21.js'
+import { applySchemaVersion22 } from './sqlite-schema-v22.js'
+import { applySchemaVersion23 } from './sqlite-schema-v23.js'
 
-export const CURRENT_SCHEMA_VERSION = 18
+export const CURRENT_SCHEMA_VERSION = 23
 
 export const initializeRuntimeDatabase = (db: Database) => {
   db.exec(`
@@ -76,6 +81,7 @@ export const initializeRuntimeDatabase = (db: Database) => {
       exit_code INTEGER,
       started_at INTEGER NOT NULL,
       ended_at INTEGER,
+      output_text TEXT NOT NULL DEFAULT '',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -244,5 +250,30 @@ export const initializeRuntimeDatabase = (db: Database) => {
   if (!appliedVersions.has(18)) {
     applySchemaVersion18(db)
     db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(18, Date.now())
+  }
+
+  if (!appliedVersions.has(19)) {
+    applySchemaVersion19(db)
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(19, Date.now())
+  }
+
+  if (!appliedVersions.has(20)) {
+    applySchemaVersion20(db)
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(20, Date.now())
+  }
+
+  if (!appliedVersions.has(21)) {
+    applySchemaVersion21(db)
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(21, Date.now())
+  }
+
+  if (!appliedVersions.has(22)) {
+    applySchemaVersion22(db)
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(22, Date.now())
+  }
+
+  if (!appliedVersions.has(23)) {
+    applySchemaVersion23(db)
+    db.prepare('INSERT INTO schema_version (version, applied_at) VALUES (?, ?)').run(23, Date.now())
   }
 }

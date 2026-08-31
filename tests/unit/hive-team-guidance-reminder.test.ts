@@ -13,7 +13,7 @@ describe('ORCHESTRATOR_REMINDER_TAIL', () => {
   })
 
   test('names the role and the exact dispatch verb so a post-/compact agent can re-anchor', () => {
-    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('Hive Orchestrator')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('Hive Department Manager')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team send "<worker-name>" "<task>"')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team cancel --dispatch <id> "<reason>"')
   })
@@ -58,9 +58,9 @@ describe('buildWorkerReminderTail', () => {
 describe('buildProtocolDoc', () => {
   test('renders both orchestrator and worker rule sections', () => {
     const doc = buildProtocolDoc()
-    expect(doc).toContain('## Orchestrator rules')
+    expect(doc).toContain('## Department Manager rules')
     expect(doc).toContain('## Worker rules')
-    expect(doc).toContain('## `team` CLI — orchestrator')
+    expect(doc).toContain('## `team` CLI — department manager')
     expect(doc).toContain('## `team` CLI — worker')
     expect(doc).toContain('team cancel --dispatch <id> "<reason>"')
   })
@@ -80,7 +80,8 @@ describe('buildProtocolDoc', () => {
     // Both sections should yield at least 3 bullets each (current rule counts
     // are 7 / 6; locking in "at least 3" tolerates future rule edits while
     // still catching the regression where renderRules collapsed bullets).
-    const orchSection = doc.split('## Orchestrator rules')[1]?.split('## Worker rules')[0] ?? ''
+    const orchSection =
+      doc.split('## Department Manager rules')[1]?.split('## Worker rules')[0] ?? ''
     const workerSection = doc.split('## Worker rules')[1] ?? ''
     expect(
       orchSection.split('\n').filter((line) => line.startsWith('- ')).length

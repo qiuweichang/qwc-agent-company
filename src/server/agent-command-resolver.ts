@@ -84,11 +84,6 @@ const isWindowsBatchFile = (command: string) => {
   return extension === '.cmd' || extension === '.bat'
 }
 
-const quoteWindowsCommandArgument = (value: string) => `"${value.replace(/"/g, '\\"')}"`
-
-const createWindowsCommandLine = (command: string, args: string[]) =>
-  [command, ...args].map(quoteWindowsCommandArgument).join(' ')
-
 export const resolveSpawnCommand = (
   command: string,
   cwd: string,
@@ -99,7 +94,10 @@ export const resolveSpawnCommand = (
   const resolvedCommand = resolveCommandPath(command, cwd, env, platform)
   if (platform === 'win32' && isWindowsBatchFile(resolvedCommand)) {
     return {
-      args: ['/d', '/s', '/c', createWindowsCommandLine(resolvedCommand, args)],
+      // Keep the shim and its arguments as separate argv values. node-pty owns
+      // the final Windows quoting, while CALL prevents npm .CMD shims from
+      // replacing the hosting command interpreter before output is attached.
+      args: ['/d', '/c', 'call', resolvedCommand, ...args],
       command: getEnvValue(env, 'ComSpec', platform) ?? 'cmd.exe',
     }
   }

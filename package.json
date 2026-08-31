@@ -1,7 +1,7 @@
 {
-  "name": "@tt-a1i/hive",
-  "version": "1.4.0",
-  "description": "Run Claude Code, Codex, Gemini, OpenCode, Qwen, and other CLI agents as a visible local team in your browser.",
+  "name": "agent-company",
+  "version": "0.1.0",
+  "description": "A local-first personal AI software company powered by Claude Code and Codex.",
   "type": "module",
   "packageManager": "pnpm@10.30.3",
   "license": "BUSL-1.1",
@@ -15,14 +15,6 @@
     "pty",
     "workspace"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/tt-a1i/hive.git"
-  },
-  "bugs": {
-    "url": "https://github.com/tt-a1i/hive/issues"
-  },
-  "homepage": "https://github.com/tt-a1i/hive#readme",
   "engines": {
     "node": ">=22"
   },
@@ -33,39 +25,32 @@
     "LICENSE.BSL",
     "NOTICE",
     "README.md",
-    "README.en.md",
-    "README.zh.md",
     "SECURITY.md",
     "TRADEMARK.md",
     "dist/bin/",
     "dist/src/",
-    "dist/vendor/",
     "web/dist/",
-    "scripts/fix-runtime-artifacts.mjs"
+    "vendor/archify/",
+    "vendor/skills/"
   ],
   "publishConfig": {
     "access": "public"
   },
   "bin": {
-    "hive": "dist/src/cli/hive.js"
+    "agent-company": "dist/src/cli/hive.js"
   },
   "scripts": {
     "clean": "node scripts/clean-build.mjs",
     "dev": "pnpm dev:all",
-    "dev:all": "concurrently \"pnpm dev:runtime\" \"pnpm dev:web\"",
+    "dev:all": "node scripts/dev-all.mjs",
     "dev:runtime": "tsx src/cli/hive.ts --port 4010",
     "dev:web": "vite --config web/vite.config.ts",
     "build": "pnpm clean && tsc -p tsconfig.build.json && node scripts/prepare-build-artifacts.mjs && pnpm build:web",
     "build:web": "vite build --config web/vite.config.ts",
     "check": "pnpm exec biome check .",
     "format": "pnpm exec biome format --write .",
-    "pack:check": "npm pack --dry-run --json",
-    "pack:smoke": "node scripts/pack-smoke.mjs",
     "postinstall": "node scripts/fix-runtime-artifacts.mjs",
-    "release:dry": "pnpm check && pnpm build && pnpm test && pnpm pack:check && pnpm pack:smoke",
-    "sync:marketplace": "node scripts/sync-marketplace.mjs",
     "test": "vitest run",
-    "test:windows": "vitest run tests/unit/agent-command-resolver.test.ts tests/unit/session-capture-multi-cli.test.ts tests/unit/claude-session-support.test.ts tests/unit/worker-name-generator.test.ts tests/unit/open-target-commands.test.ts tests/unit/sw-template-substitution.test.ts tests/unit/build-sw-plugin.test.ts tests/server/fs-pick-folder.test.ts tests/server/fs-browse.test.ts tests/server/schema-version.test.ts tests/server/runtime-rehydration.test.ts tests/server/open-workspace-route.test.ts tests/server/static-pwa.test.ts tests/web/workspace-picker.test.tsx tests/web/confirm-dialog.test.tsx tests/web/toast.test.tsx tests/web/open-workspace-button.test.tsx tests/web/register-service-worker.test.ts tests/web/use-shortcut-action.test.ts tests/web/update-available-toast.test.tsx tests/web/runtime-offline-page.test.tsx tests/web/use-terminal-panel-height.test.ts tests/web/use-terminal-panel-tabs.test.ts tests/web/terminal-tabs.test.tsx tests/web/terminal-bottom-panel.test.tsx --no-file-parallelism --maxWorkers=1 --testTimeout=60000 --hookTimeout=60000",
     "test:watch": "vitest"
   },
   "dependencies": {
@@ -106,7 +91,6 @@
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/ws": "^8.18.1",
-    "concurrently": "^9.1.2",
     "jsdom": "^26.1.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",

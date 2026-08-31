@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
 
 import type { WorkerRole } from '../shared/types.js'
+import type { WorkflowThread } from '../shared/workflow-types.js'
 import type { PickFolderResponse } from './fs-pick-folder.js'
 import type {
   OpenCommandResult,
@@ -59,7 +60,9 @@ export interface CreateWorkerBody {
 }
 
 export interface UserInputBody {
+  recipient?: string
   text: string
+  thread?: WorkflowThread
 }
 
 export interface ConfigureAgentLaunchBody {

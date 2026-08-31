@@ -178,7 +178,7 @@ describe('agent runtime races (unit)', () => {
         'ws-1',
         'agent-1',
         'dispatch-1',
-        'Orchestrator',
+        '部门经理',
         'Coder role',
         'Implement login'
       )
@@ -186,7 +186,7 @@ describe('agent runtime races (unit)', () => {
 
     expect(writes).toHaveLength(1)
     expect(writes[0]).toContain('Implement login')
-    expect(writes[0]).toContain('@Orchestrator')
+    expect(writes[0]).toContain('@部门经理')
   })
 
   test('does not retain live run when persisted insert fails', async () => {

@@ -63,6 +63,8 @@ export const buildAgentStartupInstructions = ({
       '- team report --stdin [--dispatch <id>] [--artifact <path>]         同上，从 stdin 读正文（适合多行/含引号/特殊字符）',
       '- team status "<当前状态>" [--artifact <path>]                       中段进度/待命/接入状态',
       '- team status --stdin [--artifact <path>]                          同上，从 stdin 读正文',
+      '- team stitch generate (<prompt> | --stdin) --title <项目名>        通过已配置 Stitch MCP 生成桌面设计（UI 设计师）',
+      '- team stitch revise (<prompt> | --stdin) --project <id> --screen <id>  根据用户意见修改现有 Stitch 设计',
       '- team list                                                        查看 workspace 内的 worker（含状态）',
       '- team --help                                                      仅查命令用法；**不是**汇报手段',
       '',

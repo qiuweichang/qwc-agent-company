@@ -12,6 +12,19 @@ const PASTE_ACK_CHECK_INTERVAL_MS = 50
 const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
 const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
+const CLAUDE_TRUST_TIMEOUT_MS = 5000
+const CLAUDE_TRUST_POLL_INTERVAL_MS = 50
+const CLAUDE_TRUST_MARKER = 'Yes,Itrustthisfolder'
+const CLAUDE_BYPASS_MARKER = 'Yes,Iaccept'
+const ANSI_CSI_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[a-zA-Z]`, 'g')
+const ANSI_OSC_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\][^\\u0007]*\\u0007`, 'g')
+
+/** Removes terminal cursor/style controls while preserving the user-visible prompt text. */
+const stripTerminalControls = (output: string) =>
+  output.replace(ANSI_OSC_PATTERN, '').replace(ANSI_CSI_PATTERN, '')
+
+/** Compacts cursor-positioned TUI words so safety choices can be matched reliably. */
+const compactTerminalText = (output: string) => stripTerminalControls(output).replace(/\s+/gu, '')
 
 export const toBracketedPasteSubmission = (text: string) => `\u001b[200~${text}\u001b[201~`
 
@@ -30,9 +43,10 @@ const hasGeminiPromptReady = (output: string) => /\bType your message\b/u.test(o
 
 export const hasInteractivePromptReady = (output: string, command = '') => {
   const commandName = getCommandName(command)
+  const visibleOutput = stripTerminalControls(output)
   return (
-    /(?:^|[\r\n])\s*[❯›]\s*/u.test(output) ||
-    (commandName === 'gemini' && hasGeminiPromptReady(output))
+    /(?:^|[\r\n])\s*[❯›]\s*/u.test(visibleOutput) ||
+    (commandName === 'gemini' && hasGeminiPromptReady(visibleOutput))
   )
 }
 
@@ -56,6 +70,47 @@ const writeIfRunWritable = (agentManager: AgentManager, runId: string, text: str
   if (!isWritableRunStatus(run.status)) return false
   agentManager.writeInput(runId, text)
   return true
+}
+
+/**
+ * Confirms Claude's one-time workspace trust prompt for the exact local folder
+ * the user selected in Agent Company. Startup guidance waits for the normal
+ * prompt after this confirmation so it cannot be pasted into the safety menu.
+ */
+export const prepareInteractiveAgentRun = async (
+  agentManager: AgentManager,
+  runId: string,
+  command: string
+): Promise<void> => {
+  if (!isClaudeCommand(command)) return
+  const startedAt = Date.now()
+  let inspectedOutputLength = 0
+  while (Date.now() - startedAt < CLAUDE_TRUST_TIMEOUT_MS) {
+    let run: ReturnType<AgentManager['getRun']>
+    try {
+      run = agentManager.getRun(runId)
+    } catch {
+      return
+    }
+    if (!isWritableRunStatus(run.status)) return
+    const visibleOutput = compactTerminalText(run.output.slice(inspectedOutputLength))
+    if (visibleOutput.includes(CLAUDE_BYPASS_MARKER)) {
+      // The bypass warning defaults to "No"; move once to the explicit accept choice.
+      await new Promise((resolve) => setTimeout(resolve, 350))
+      if (!writeIfRunWritable(agentManager, runId, '\u001b[B')) return
+      await new Promise((resolve) => setTimeout(resolve, 180))
+      if (!writeIfRunWritable(agentManager, runId, '\r')) return
+      inspectedOutputLength = run.output.length
+    } else if (visibleOutput.includes(CLAUDE_TRUST_MARKER)) {
+      // The folder-trust prompt defaults to "Yes" for the user-selected workspace.
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      if (!writeIfRunWritable(agentManager, runId, '\r')) return
+      inspectedOutputLength = run.output.length
+    } else if (hasInteractivePromptReady(run.output.slice(inspectedOutputLength), command)) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, CLAUDE_TRUST_POLL_INTERVAL_MS))
+  }
 }
 
 const submitPastedInteractiveInput = (

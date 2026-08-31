@@ -1,6 +1,8 @@
+import type { WorkflowThread } from '../shared/workflow-types.js'
+import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 import type { AgentRuntime } from './agent-runtime.js'
 import type { DispatchRecord } from './dispatch-ledger-store.js'
-import { ConflictError, PtyInactiveError } from './http-errors.js'
+import { ConflictError } from './http-errors.js'
 import type { MessageLogHandle, MessageLogRecord } from './message-log-store.js'
 import {
   createReportMessage,
@@ -27,6 +29,7 @@ export interface TeamOperationsInput {
   ) => DispatchRecord | undefined
   findOpenDispatchById: (workspaceId: string, dispatchId: string) => DispatchRecord | undefined
   insertMessage: (record: MessageLogRecord) => MessageLogHandle
+  getActiveThread: (workspaceId: string) => WorkflowThread
   markDispatchCancelled: (input: {
     dispatchId: string
     reason: string
@@ -84,6 +87,7 @@ export const createTeamOperations = ({
   findOpenDispatch,
   findOpenDispatchById,
   insertMessage,
+  getActiveThread,
   markDispatchCancelled,
   markDispatchReportedByWorker,
   markDispatchSubmitted,
@@ -122,7 +126,13 @@ export const createTeamOperations = ({
     text: string,
     input: DispatchTaskInput = {}
   ) => {
-    const message = createSendMessage(workspaceId, workerId, text, input.fromAgentId)
+    const message = createSendMessage(
+      workspaceId,
+      workerId,
+      text,
+      input.fromAgentId,
+      getActiveThread(workspaceId)
+    )
     const messageHandle = insertMessage(message)
     let dispatch: DispatchRecord | undefined
 
@@ -201,17 +211,60 @@ export const createTeamOperations = ({
       const worker = workspaceStore.getWorkerByName(workspaceId, workerName)
       return dispatchTask(workspaceId, worker.id, text, input)
     },
-    recordUserInput(workspaceId: string, orchestratorId: string, text: string) {
+    recordUserInput(
+      workspaceId: string,
+      orchestratorId: string,
+      text: string,
+      thread: WorkflowThread = 'planning',
+      promptText: string = text
+    ) {
       workspaceStore.getAgent(workspaceId, orchestratorId)
+      agentRuntime.writeUserInputPrompt(workspaceId, promptText)
+      insertMessage(createUserInputMessage(workspaceId, orchestratorId, text, thread))
+    },
+    /**
+     * Persists one Web conversation message and delivers it to the explicitly selected CLI member.
+     * Direct worker replies intentionally bypass the Orchestrator PTY so a failed or busy coordinator
+     * cannot swallow a user's answer. The Orchestrator still owns the dispatch for audit and reporting.
+     */
+    async routeUserInput(
+      workspaceId: string,
+      orchestratorId: string,
+      recipientName: string,
+      text: string,
+      thread: WorkflowThread = 'planning',
+      promptText: string = text,
+      hivePort: string = ''
+    ) {
+      workspaceStore.getAgent(workspaceId, orchestratorId)
+      const messageHandle = insertMessage(
+        createUserInputMessage(workspaceId, orchestratorId, text, thread)
+      )
+      try {
+        if (recipientName === DEPARTMENT_MANAGER_NAME) {
+          agentRuntime.writeUserInputPrompt(workspaceId, promptText)
+          return
+        }
+        const worker = workspaceStore.getWorkerByName(workspaceId, recipientName)
+        await dispatchTask(workspaceId, worker.id, promptText, {
+          fromAgentId: orchestratorId,
+          hivePort,
+        })
+      } catch (error) {
+        deleteMessage(messageHandle)
+        throw error
+      }
+    },
+    /** Sends a lifecycle/system notice to the orchestrator without duplicating it as user input. */
+    notifyOrchestrator(workspaceId: string, text: string) {
       agentRuntime.writeUserInputPrompt(workspaceId, text)
-      insertMessage(createUserInputMessage(workspaceId, orchestratorId, text))
     },
     statusTask(workspaceId: string, workerId: string, input: StatusTaskInput = {}) {
       const text = input.text ?? ''
       const artifacts = input.artifacts ?? []
       const worker = workspaceStore.getWorker(workspaceId, workerId)
       const messageHandle = insertMessage(
-        createStatusMessage(workspaceId, workerId, text, artifacts)
+        createStatusMessage(workspaceId, workerId, text, artifacts, getActiveThread(workspaceId))
       )
       try {
         let forwardError: string | null = null
@@ -238,12 +291,6 @@ export const createTeamOperations = ({
       const status = input.status
       const artifacts = input.artifacts ?? []
       const worker = workspaceStore.getWorker(workspaceId, workerId)
-      if (
-        input.requireActiveRun === true &&
-        !agentRuntime.getActiveRunByAgentId(workspaceId, `${workspaceId}:orchestrator`)
-      ) {
-        throw new PtyInactiveError(`No active run for agent: ${workspaceId}:orchestrator`)
-      }
       const openDispatch = findOpenDispatch(workspaceId, workerId, input.dispatchId)
       if (!openDispatch && input.dispatchId) {
         throw new ConflictError(`No open dispatch for worker: ${worker.name}`)
@@ -252,7 +299,14 @@ export const createTeamOperations = ({
         throw new ConflictError(`No open dispatch for worker: ${worker.name}`)
       }
       const messageHandle = insertMessage(
-        createReportMessage(workspaceId, workerId, text, status, artifacts)
+        createReportMessage(
+          workspaceId,
+          workerId,
+          text,
+          status,
+          artifacts,
+          getActiveThread(workspaceId)
+        )
       )
       try {
         const dispatch = markDispatchReportedByWorker({

@@ -8,30 +8,34 @@ import type {
   SendTaskBody,
   WorkerRole,
 } from './route-types.js'
+import { artifactRoutes } from './routes-artifacts.js'
 import { dispatchRoutes } from './routes-dispatches.js'
 import { fsRoutes } from './routes-fs.js'
-import { marketplaceRoutes } from './routes-marketplace.js'
 import { openWorkspaceRoutes } from './routes-open-workspace.js'
+import { projectOperationRoutes } from './routes-project-operations.js'
 import { runtimeRoutes } from './routes-runtime.js'
 import { settingsRoutes } from './routes-settings.js'
+import { stitchRoutes } from './routes-stitch.js'
 import { taskRoutes } from './routes-tasks.js'
 import { teamRoutes } from './routes-team.js'
 import { uiRoutes } from './routes-ui.js'
-import { versionRoutes } from './routes-version.js'
+import { workflowRoutes } from './routes-workflow.js'
 import { workspaceRoutes } from './routes-workspaces.js'
 
 const routes: RouteDefinition[] = [
+  ...artifactRoutes,
   ...workspaceRoutes,
+  ...workflowRoutes,
+  ...projectOperationRoutes,
   ...openWorkspaceRoutes,
   ...dispatchRoutes,
-  ...versionRoutes,
   ...uiRoutes,
   ...settingsRoutes,
+  ...stitchRoutes,
   ...taskRoutes,
   ...runtimeRoutes,
   ...teamRoutes,
   ...fsRoutes,
-  ...marketplaceRoutes,
 ]
 
 export const matchRoute = (method: string, pathname: string) => {

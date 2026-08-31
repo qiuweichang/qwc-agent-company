@@ -1,4 +1,5 @@
 import type { AgentSummary } from '../shared/types.js'
+import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 import { ForbiddenError, UnauthorizedError } from './http-errors.js'
 
 export type TeamCommand = 'send' | 'list' | 'report' | 'status' | 'cancel' | 'help'
@@ -45,6 +46,7 @@ export const authenticateCliAgent = ({
 
 export const requireCommandForRole = (agent: AgentSummary, command: TeamCommand) => {
   if (!commandAllowedForRole(agent.role, command)) {
-    throw new ForbiddenError(`Role '${agent.role}' is not allowed to run team ${command}`)
+    const roleName = agent.role === 'orchestrator' ? DEPARTMENT_MANAGER_NAME : agent.role
+    throw new ForbiddenError(`Role '${roleName}' is not allowed to run team ${command}`)
   }
 }

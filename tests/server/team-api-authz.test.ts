@@ -236,7 +236,7 @@ describe('team API authz (R1.4)', () => {
 
       expect(response.status).toBe(403)
       await expect(response.json()).resolves.toEqual({
-        error: "Role 'orchestrator' is not allowed to run team report",
+        error: "Role '部门经理' is not allowed to run team report",
       })
       expect(
         ctx.hive.store

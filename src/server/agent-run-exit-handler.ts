@@ -31,6 +31,7 @@ export const handleAgentRunExit = (
     return false
   }
 
+  liveRun.output = context.getRunSnapshot(runId).output
   completeLiveRun(liveRun, exitCode, endedAt, context.store)
   clearResumedSessionOnFailure(context, exitCode)
   context.handledRunExits.add(runId)

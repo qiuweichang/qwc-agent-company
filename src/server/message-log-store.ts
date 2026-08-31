@@ -1,13 +1,23 @@
 import type { Database } from 'better-sqlite3'
 
+import type { WorkflowThread } from '../shared/workflow-types.js'
+
 export interface MessageLogRecord {
   artifacts?: string[]
   createdAt: number
   fromAgentId?: string
   status?: string
   text: string
+  thread: WorkflowThread
   toAgentId?: string
-  type: 'user_input' | 'send' | 'report' | 'status' | 'system_env_sync' | 'system_recovery_summary'
+  type:
+    | 'user_input'
+    | 'send'
+    | 'report'
+    | 'status'
+    | 'system_env_sync'
+    | 'system_recovery_summary'
+    | 'system_workflow'
   workerId: string
   workspaceId: string
 }
@@ -57,13 +67,22 @@ interface MessageKindRow {
 }
 
 interface MessageRow {
+  sequence: number
   created_at: number
   artifacts: string | null
   from_agent_id: string | null
   status: string | null
   text: string | null
+  thread: WorkflowThread
   to_agent_id: string | null
-  type: 'user_input' | 'send' | 'report' | 'status' | 'system_env_sync' | 'system_recovery_summary'
+  type:
+    | 'user_input'
+    | 'send'
+    | 'report'
+    | 'status'
+    | 'system_env_sync'
+    | 'system_recovery_summary'
+    | 'system_workflow'
   worker_id: string
 }
 
@@ -91,8 +110,9 @@ export const createMessageLogStore = (db: Database) => {
          text,
          status,
          artifacts,
-         created_at
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         created_at,
+         thread
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.workspaceId,
@@ -103,7 +123,8 @@ export const createMessageLogStore = (db: Database) => {
         input.text,
         input.status ?? null,
         input.artifacts ? JSON.stringify(input.artifacts) : null,
-        input.createdAt
+        input.createdAt,
+        input.thread
       )
     return { sequence: Number(result.lastInsertRowid) }
   }
@@ -177,9 +198,42 @@ export const createMessageLogStore = (db: Database) => {
       .filter((message): message is RecoveryMessage => message !== null)
   }
 
+  /**
+   * Lists durable conversation rows for the web client. Internal recovery-only
+   * messages stay excluded so implementation details do not pollute project history.
+   */
+  const listConversationMessages = (workspaceId: string, thread: WorkflowThread) => {
+    return db
+      .prepare(
+        `SELECT sequence, worker_id, type, from_agent_id, to_agent_id, text,
+                status, artifacts, created_at, thread
+         FROM messages
+         WHERE workspace_id = ? AND thread = ?
+           AND type IN ('user_input', 'send', 'report', 'status', 'system_workflow')
+         ORDER BY sequence ASC`
+      )
+      .all(workspaceId, thread)
+      .map((row) => {
+        const typedRow = row as MessageRow
+        return {
+          artifacts: parseArtifacts(typedRow.artifacts),
+          createdAt: typedRow.created_at,
+          fromAgentId: typedRow.from_agent_id,
+          sequence: typedRow.sequence,
+          status: typedRow.status,
+          text: typedRow.text ?? '',
+          thread: typedRow.thread,
+          toAgentId: typedRow.to_agent_id,
+          type: typedRow.type,
+          workerId: typedRow.worker_id,
+        }
+      })
+  }
+
   return {
     deleteMessage,
     insertMessage,
+    listConversationMessages,
     listMessageKinds,
     listMessagesForRecovery,
   }

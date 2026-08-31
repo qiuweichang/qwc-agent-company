@@ -31,6 +31,13 @@ const normalizeWorkerName = (name: string) => {
   return trimmed
 }
 
+const normalizeWorkspaceName = (name: string) => {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Workspace name must not be empty')
+  if (trimmed.length > 80) throw new Error('Workspace name must be 80 characters or fewer')
+  return trimmed
+}
+
 export const createWorkspaceStore = (
   db: Database,
   messageKinds: MessageKindRecord[]
@@ -158,6 +165,13 @@ export const createWorkspaceStore = (
     },
     listWorkspaces() {
       return Array.from(workspaces.values(), (workspace) => workspace.summary)
+    },
+    renameWorkspace(workspaceId, name) {
+      const workspace = getWorkspace(workspaceId)
+      const normalizedName = normalizeWorkspaceName(name)
+      db.prepare('UPDATE workspaces SET name = ? WHERE id = ?').run(normalizedName, workspaceId)
+      workspace.summary.name = normalizedName
+      return workspace.summary
     },
     markAgentStarted: (workspaceId, agentId) => markAgentStarted(workspaces, workspaceId, agentId),
     markAgentStopped: (workspaceId, agentId) => markAgentStopped(workspaces, workspaceId, agentId),

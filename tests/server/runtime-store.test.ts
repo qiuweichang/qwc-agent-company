@@ -101,7 +101,7 @@ describe('runtime store', () => {
 
     expect(snapshot.agents).toHaveLength(1)
     expect(snapshot.agents[0]).toMatchObject({
-      name: 'Orchestrator',
+      name: '部门经理',
       role: 'orchestrator',
       status: 'stopped',
       pendingTaskCount: 0,

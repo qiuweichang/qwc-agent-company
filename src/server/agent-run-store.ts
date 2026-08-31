@@ -22,6 +22,8 @@ export interface PersistedAgentRun {
   pid: number | null
   startedAt: number
   endedAt: number | null
+  /** Complete bounded PTY transcript, including CLI thinking and tool calls. */
+  output: string
 }
 
 const parseArgsJson = (argsJson: string, agentId: string) => {
@@ -64,6 +66,7 @@ interface AgentRunRow {
   exit_code: number | null
   started_at: number
   ended_at: number | null
+  output_text: string
 }
 
 export const createAgentRunStore = (db: Database) => {
@@ -173,8 +176,8 @@ export const createAgentRunStore = (db: Database) => {
       return
     }
     db.prepare(
-      `INSERT INTO agent_runs (run_id, agent_id, pid, status, exit_code, started_at, ended_at, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      `INSERT INTO agent_runs (run_id, agent_id, pid, status, exit_code, started_at, ended_at, output_text, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, '', ?, ?)`
     ).run(runId, agentId, pid, status, exitCode, startedAt, endedAt, startedAt, startedAt)
   }
 
@@ -182,14 +185,15 @@ export const createAgentRunStore = (db: Database) => {
     runId: string,
     status: PersistedAgentRun['status'],
     exitCode: number | null,
-    endedAt: number | null
+    endedAt: number | null,
+    output?: string
   ) => {
     if (closed) {
       return
     }
     db.prepare(
-      'UPDATE agent_runs SET status = ?, exit_code = ?, ended_at = ?, updated_at = ? WHERE run_id = ?'
-    ).run(status, exitCode, endedAt, Date.now(), runId)
+      'UPDATE agent_runs SET status = ?, exit_code = ?, ended_at = ?, output_text = COALESCE(?, output_text), updated_at = ? WHERE run_id = ?'
+    ).run(status, exitCode, endedAt, output ?? null, Date.now(), runId)
   }
 
   const listAgentRuns = (agentId: string) => {
@@ -199,7 +203,7 @@ export const createAgentRunStore = (db: Database) => {
 
     return db
       .prepare(
-        'SELECT run_id, agent_id, pid, status, exit_code, started_at, ended_at FROM agent_runs WHERE agent_id = ? ORDER BY started_at DESC'
+        'SELECT run_id, agent_id, pid, status, exit_code, started_at, ended_at, output_text FROM agent_runs WHERE agent_id = ? ORDER BY started_at DESC'
       )
       .all(agentId)
       .map((row: unknown) => {
@@ -212,6 +216,7 @@ export const createAgentRunStore = (db: Database) => {
           exitCode: typedRow.exit_code,
           startedAt: typedRow.started_at,
           endedAt: typedRow.ended_at,
+          output: typedRow.output_text,
         }
       }) satisfies PersistedAgentRun[]
   }

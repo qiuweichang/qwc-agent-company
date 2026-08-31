@@ -26,6 +26,11 @@ const resolveHiveBinDir = () => {
 }
 
 const HIVE_BIN_DIR = resolveHiveBinDir()
+const AGENT_COMPANY_HOME = (() => {
+  const moduleDir = dirname(fileURLToPath(import.meta.url))
+  const packageRoot = resolve(moduleDir, '../..')
+  return moduleDir.includes(`${sep}dist${sep}src${sep}`) ? resolve(packageRoot, '..') : packageRoot
+})()
 const SESSION_CAPTURE_TIMEOUT_MS = 30_000
 
 type LaunchPreset = Pick<
@@ -93,6 +98,7 @@ export const buildAgentRunBootstrap = (
       HIVE_PROJECT_ID: workspace.id,
       HIVE_AGENT_ID: agentId,
       HIVE_AGENT_TOKEN: '',
+      AGENT_COMPANY_HOME,
       PATH: `${HIVE_BIN_DIR}${delimiter}${process.env.PATH ?? ''}`,
     },
   }

@@ -16,6 +16,7 @@ import { createTeamOperations } from './team-operations.js'
 import { resolveTerminalInputProfile } from './terminal-input-profile.js'
 import { createUiAuth } from './ui-auth.js'
 import { createWorkerOutputTracker, type WorkerOutputTracker } from './worker-output-tracker.js'
+import { createWorkflowStore } from './workflow-store.js'
 import { createWorkspaceShellRuntime } from './workspace-shell-runtime.js'
 import { createWorkspaceStore } from './workspace-store.js'
 
@@ -34,6 +35,7 @@ export interface RuntimeStoreServices {
   uiAuth: ReturnType<typeof createUiAuth>
   workerOutputTracker: WorkerOutputTracker | null
   workspaceStore: ReturnType<typeof createWorkspaceStore>
+  workflowStore: ReturnType<typeof createWorkflowStore>
 }
 
 interface CreateRuntimeStoreServicesOptions {
@@ -78,6 +80,7 @@ export const createRuntimeStoreServices = (
   agentRunStore.markUnfinishedRunsStale()
 
   const workspaceStore = createWorkspaceStore(db, dispatchLedgerStore.listOpenDispatchKinds())
+  const workflowStore = createWorkflowStore(db)
   const startExistingWorkspaceWatches = () => {
     for (const workspace of workspaceStore.listWorkspaces()) {
       void tasksFileWatcher.start(workspace.id, workspace.path)
@@ -113,6 +116,7 @@ export const createRuntimeStoreServices = (
     findOpenDispatch: dispatchLedgerStore.findOpenDispatch,
     findOpenDispatchById: dispatchLedgerStore.findOpenDispatchById,
     insertMessage: messageLogStore.insertMessage,
+    getActiveThread: (workspaceId) => workflowStore.get(workspaceId).activeThread,
     markDispatchCancelled: dispatchLedgerStore.markCancelled,
     markDispatchReportedByWorker: dispatchLedgerStore.markReportedByWorker,
     markDispatchSubmitted: dispatchLedgerStore.markSubmitted,
@@ -135,6 +139,7 @@ export const createRuntimeStoreServices = (
     uiAuth,
     workerOutputTracker,
     workspaceStore,
+    workflowStore,
   }
 }
 

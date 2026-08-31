@@ -1,4 +1,5 @@
 import type { Database } from 'better-sqlite3'
+import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 
 import { BUILTIN_COMMAND_PRESETS } from './command-preset-defaults.js'
 import {
@@ -76,7 +77,7 @@ export const applySchemaVersion7 = (db: Database) => {
      ON CONFLICT(id) DO NOTHING`
   ).run(
     'orchestrator',
-    'Orchestrator',
+    DEPARTMENT_MANAGER_NAME,
     'orchestrator',
     ORCHESTRATOR_ROLE_DESCRIPTION,
     'claude',

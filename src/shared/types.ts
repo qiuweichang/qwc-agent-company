@@ -32,8 +32,8 @@ export interface TeamListItem {
    */
   lastPtyLine?: string
   /**
-   * Built-in command preset this worker was launched with (`claude` / `codex` /
-   * `opencode` / `gemini`). Drives the worker card's CLI logo (§6.4). Undefined
+   * Built-in command preset this worker was launched with (`claude` / `codex`).
+   * Drives the worker card's CLI identity. Undefined
    * when the worker was created without picking a preset, or when the launch
    * config row references a custom command — in that case the UI falls back to
    * the role-letter avatar.

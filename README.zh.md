@@ -8,7 +8,7 @@
   <img src="./assets/hive-hero.png" alt="Hive 本机多 agent 协作工作台" />
 </p>
 
-**Hive 是浏览器里的 Agent 协作工作台——一群 Agent 在你本机各自开工，一个当 Orchestrator 派活、归总进展，其余各司其职。** Orchestrator 本身就是一个真实的 `agy` / `claude` / `codex` / `opencode` / `gemini` / `hermes` / `qwen` 进程——不是你、也不是脚本——它派单的 Worker 同样是真 CLI agent。所有 agent 都是本机真实的 PTY 进程，通过 Hive 注入到 shell 里的小型 `team` 协议互相通信，共享 `<workspace>/.hive/tasks.md` 这份 markdown 任务图。
+**Hive 是浏览器里的 Agent 协作工作台——一群 Agent 在你本机各自开工，一个当部门经理派活、归总进展，其余各司其职。** 部门经理本身就是一个真实的 `agy` / `claude` / `codex` / `opencode` / `gemini` / `hermes` / `qwen` 进程——不是你、也不是脚本——它派单的 Worker 同样是真 CLI agent。所有 agent 都是本机真实的 PTY 进程，通过 Hive 注入到 shell 里的小型 `team` 协议互相通信，共享 `<workspace>/.hive/tasks.md` 这份 markdown 任务图。
 
 写代码、做调研、起草文档、做翻译——凡是能拆给一群人协作的脑力活，都可以让一群 Agent 合伙干。
 
@@ -28,7 +28,7 @@
 > 本仓库是 Hive 的公开源码基线。面向用户的正式安装包以 npm 发布为准；如果你只是想安装或升级，请优先使用下面的 npm 命令。
 
 <p align="center">
-  <img src="./assets/hive-team-view.png" alt="Hive 工作台：4 个 CLI Agent 团队，Orchestrator 派单、Worker 各自开工" />
+  <img src="./assets/hive-team-view.png" alt="Hive 工作台：4 个 CLI Agent 团队，部门经理派单、Worker 各自开工" />
 </p>
 
 ## 为什么需要 Hive
@@ -46,7 +46,7 @@ Hive 加上这一层调度，**不替换**任何 CLI。Agent 还是真实跑在�
 
 **带 reviewer 发一个 PR**
 
-让 Orchestrator 先拆任务，再派一个 worker 实现、一个 worker review。实现、反馈、返工和最终汇报都留在同一个 workspace 里，不用在几个终端之间来回找上下文。
+让部门经理先拆任务，再派一个 worker 实现、一个 worker review。实现、反馈、返工和最终汇报都留在同一个 workspace 里，不用在几个终端之间来回找上下文。
 
 ```text
 修复设置页搜索 bug。派一个 worker 实现，再派一个 reviewer 检查边界情况，最后汇总还能不能合。
@@ -70,7 +70,7 @@ Hive 加上这一层调度，**不替换**任何 CLI。Agent 还是真实跑在�
 
 ## 先看看 demo
 
-还没装任何 agent CLI？运行 `hive`、打开它打印出的本地地址、在 first-run 向导里点 **Try Demo**。你会看到一个完全跑在客户端的预览——假 orchestrator + 两个 worker、预录的终端 scrollback、一份预填的任务清单——既不会连服务器，也不需要任何真实 CLI agent。适合决定要不要继续装真 CLI。
+还没装任何 agent CLI？运行 `hive`、打开它打印出的本地地址、在 first-run 向导里点 **Try Demo**。你会看到一个完全跑在客户端的预览——假部门经理 + 两个 worker、预录的终端 scrollback、一份预填的任务清单——既不会连服务器，也不需要任何真实 CLI agent。适合决定要不要继续装真 CLI。
 
 ## 快速开始
 
@@ -115,14 +115,14 @@ PWA 只是 UI 壳，Hive 后端仍需要在终端里跑着。如果启动 PWA �
 首次使用流程：
 
 1. 选择一个项目目录作为 workspace。
-2. 挑一个 Orchestrator 预设。
-3. Hive 会创建 `<workspace>/.hive/tasks.md`，启动 Orchestrator 的 PTY，把内部的 `team` 命令注入这个 agent 会话。
+2. 挑一个部门经理预设。
+3. Hive 会创建 `<workspace>/.hive/tasks.md`，启动部门经理的 PTY，把内部的 `team` 命令注入这个 agent 会话。
 4. 在 Team Members 面板里添加 Worker。
-5. 跟 Orchestrator 说一声让它派活，它会用 `team send <worker-name> "<task>"` 发任务，Worker 完事后用 `team report` 回报。
+5. 跟部门经理说一声让它派活，它会用 `team send <worker-name> "<task>"` 发任务，Worker 完事后用 `team report` 回报。
 
-想让 Orchestrator 自己决定团队规模，可以保留 **自动组队** 开关开启（默认开启）：它会按任务需要临时 `team spawn` 合适数量的 coder / tester / reviewer，任务结束后自动收回临时成员。
+想让部门经理自己决定团队规模，可以保留 **自动组队** 开关开启（默认开启）：它会按任务需要临时 `team spawn` 合适数量的 coder / tester / reviewer，任务结束后自动收回临时成员。
 
-想试更强的自动化，可以在右上角设置里开启实验性的 **Workflow** 开关。开启后，Orchestrator 可以编写并运行多 agent workflow，把一个目标拆成 fan-out / review / test 等阶段；顶部的 **Workflows** 面板会显示运行记录、阶段结果、定时任务和停止按钮。Workflow 创建的新 agent 默认使用哪种 CLI、允许使用哪些 CLI，也可以在 Workflows 面板里配置。
+想试更强的自动化，可以在右上角设置里开启实验性的 **Workflow** 开关。开启后，部门经理可以编写并运行多 agent workflow，把一个目标拆成 fan-out / review / test 等阶段；顶部的 **Workflows** 面板会显示运行记录、阶段结果、定时任务和停止按钮。Workflow 创建的新 agent 默认使用哪种 CLI、允许使用哪些 CLI，也可以在 Workflows 面板里配置。
 
 ## 工作方式
 
@@ -135,7 +135,7 @@ PWA 只是 UI 壳，Hive 后端仍需要在终端里跑着。如果启动 PWA �
 Hive Runtime
   SQLite 元数据 · PTY 生命周期 · 任务派单
           |
-          +-- Orchestrator PTY
+          +-- 部门经理 PTY
           |     可调用：team send、team list、team report
           |
           +-- Worker PTY
@@ -174,10 +174,10 @@ Hive 不替你安装这些 CLI。请在启动 Hive 的同一个 shell 环境里�
 ## Hive 提供什么
 
 - Workspace 侧边栏，方便在多个本机项目之间切换。
-- Orchestrator 和 Worker 终端都是真实 PTY 支撑的。
+- 部门经理和 Worker 终端都是真实 PTY 支撑的。
 - Add Worker 预置 coder / reviewer / tester 等角色模板，也支持完全自定义 prompt 与命令——把任何 CLI agent 编排成你需要的角色。
-- 自动组队（实验性，默认开启）：Orchestrator 可以根据任务动态创建临时 coder / tester / reviewer，完成后自动回收。
-- Workflows（实验性，默认关闭）：Orchestrator 可以运行多阶段、多 agent 的 workflow，Hive 在 Workflows 面板里展示运行、日志、结果、定时任务和停止控制。
+- 自动组队（实验性，默认开启）：部门经理可以根据任务动态创建临时 coder / tester / reviewer，完成后自动回收。
+- Workflows（实验性，默认关闭）：部门经理可以运行多阶段、多 agent 的 workflow，Hive 在 Workflows 面板里展示运行、日志、结果、定时任务和停止控制。
 - Workflow CLI 策略：为 workflow 创建的 agent 选择默认 CLI，并限制允许使用的 CLI，避免脚本误启未配置的 agent。
 - 团队记忆：把 workspace 约束、长期上下文和团队共识留在 Hive 里，后续派单时更容易把背景带给正确的 agent。
 - `.hive/tasks.md` 编辑器，带外部文件冲突处理。

@@ -74,7 +74,7 @@ describe('team prompt contract', () => {
     await waitFor(() => {
       const run = store.getActiveRunByAgentId(workspace.id, worker.id)
       const output = run?.output.replace(/\r\n/g, '\n')
-      expect(output).toContain('@Orchestrator')
+      expect(output).toContain('@部门经理')
       expect(output).toContain(`你的角色：${worker.description}`)
       expect(output).toContain(`执行 \`team report "<result>" --dispatch ${dispatch.id}\``)
       expect(output).toContain(`dispatch_id: ${dispatch.id}`)
@@ -150,7 +150,7 @@ describe('team prompt contract', () => {
 
     await waitFor(() => {
       const run = store.getActiveRunByAgentId(workspace.id, worker.id)
-      expect(run?.output).toContain('\u001b[200~[Hive 系统消息：来自 @Orchestrator 的派单]')
+      expect(run?.output).toContain('\u001b[200~[Hive 系统消息：来自 @部门经理 的派单]')
       expect(run?.output).toContain('实现登录')
       expect(run?.output).toContain('\u001b[201~')
       expect(run?.output.match(/SUBMITTED/g)?.length ?? 0).toBeGreaterThanOrEqual(2)
@@ -221,7 +221,7 @@ describe('team prompt contract', () => {
 
     await waitFor(() => {
       const run = store.getActiveRunByAgentId(workspace.id, worker.id)
-      expect(run?.output).toContain('\u001b[200~[Hive 系统消息：来自 @Orchestrator 的派单]')
+      expect(run?.output).toContain('\u001b[200~[Hive 系统消息：来自 @部门经理 的派单]')
       expect(run?.output).toContain('实现登录')
       expect(run?.output).toContain('\u001b[201~')
       expect(run?.output.match(/SUBMITTED/g)?.length ?? 0).toBeGreaterThanOrEqual(2)

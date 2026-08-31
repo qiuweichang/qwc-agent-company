@@ -158,8 +158,8 @@ describe('workspace flow with real server', () => {
       ).toHaveAttribute('aria-current', 'true')
     })
 
-    expect(screen.getByTestId('orchestrator-start')).toHaveTextContent('Start Orchestrator')
-    expect(screen.queryByText('Orchestrator is offline')).toBeNull()
+    expect(screen.getByTestId('orchestrator-start')).toHaveTextContent('Start Department Manager')
+    expect(screen.queryByText('Department Manager is offline')).toBeNull()
     expect(document.querySelector('[data-pty-slot="orchestrator"]')).toBeNull()
     expect(serverContext.store.listTerminalRuns(existing.id)).toEqual([])
     expect(screen.queryByTestId('orchestrator-starting-body')).toBeNull()

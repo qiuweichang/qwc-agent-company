@@ -1,5 +1,7 @@
 import type { IncomingMessage } from 'node:http'
-
+import { mkdirSync } from 'node:fs'
+import { workflowThreads } from '../shared/workflow-types.js'
+import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 import {
   resolveCommandPresetLaunchConfig,
   resolveStartupCommandLaunchConfig,
@@ -42,6 +44,11 @@ export const workspaceRoutes: RouteDefinition[] = [
     requireUiTokenFromRequest(request, store.validateUiToken)
     const body = await readJsonBody<CreateWorkspaceBody>(request)
     const startupCommand = typeof body.startup_command === 'string' ? body.startup_command : null
+    if (typeof body.path === 'string' && body.path.trim()) {
+      // New personal projects are allowed to target a not-yet-created directory. Creating the exact
+      // requested path here keeps path validation strict while supporting the default workspace root.
+      mkdirSync(body.path.trim(), { recursive: true })
+    }
     const workspacePath = validateWorkspacePath(body.path)
     const workspace = store.createWorkspace(workspacePath, body.name)
     seedOrchestratorLaunchConfig(
@@ -72,6 +79,22 @@ export const workspaceRoutes: RouteDefinition[] = [
     )
     sendJson(response, 201, { ...workspace, orchestrator_start: orchestratorStart })
   }),
+  route('PATCH', '/api/workspaces/:workspaceId', async ({ params, request, response, store }) => {
+    requireUiTokenFromRequest(request, store.validateUiToken)
+    const workspaceId = getRequiredParam(
+      response,
+      params,
+      'workspaceId',
+      'Workspace id is required'
+    )
+    if (!workspaceId) return
+    const body = await readJsonBody<{ name?: string }>(request)
+    if (typeof body.name !== 'string') {
+      sendJson(response, 400, { error: 'name is required' })
+      return
+    }
+    sendJson(response, 200, store.renameWorkspace(workspaceId, body.name))
+  }),
   route('DELETE', '/api/workspaces/:workspaceId', async ({ params, request, response, store }) => {
     const workspaceId = getRequiredParam(
       response,
@@ -84,7 +107,9 @@ export const workspaceRoutes: RouteDefinition[] = [
     }
 
     requireUiTokenFromRequest(request, store.validateUiToken)
-    await store.deleteWorkspace(workspaceId)
+    const deleteFiles =
+      new URL(request.url ?? '/', 'http://127.0.0.1').searchParams.get('delete_files') === 'true'
+    await store.deleteWorkspace(workspaceId, { deleteFiles })
     response.statusCode = 204
     response.end()
   }),
@@ -258,7 +283,46 @@ export const workspaceRoutes: RouteDefinition[] = [
       requireUiTokenFromRequest(request, store.validateUiToken)
 
       const body = await readJsonBody<UserInputBody>(request)
-      store.recordUserInput(workspaceId, `${workspaceId}:orchestrator`, body.text)
+      const thread = workflowThreads.includes(body.thread ?? 'planning')
+        ? (body.thread ?? 'planning')
+        : 'planning'
+      const recipient =
+        typeof body.recipient === 'string' && body.recipient.trim()
+          ? body.recipient.trim()
+          : DEPARTMENT_MANAGER_NAME
+      const threadLabel = thread === 'planning' ? '规划流程' : '执行流程'
+      const workspace = store.getWorkspaceSnapshot(workspaceId).summary
+      const directWorkerInstructions = recipient.includes('产品')
+        ? [
+            `[${threadLabel} · 用户直接回复产品经理]`,
+            '任务内容：基于用户最新回答继续需求澄清，并返回下一个最高价值问题。',
+            `项目：${workspace.name}`,
+            `工作目录：${workspace.path}`,
+            `用户消息：${body.text}`,
+            '请基于项目名称与已有对话先做具体分析，再继续需求澄清。一次只问一个最高价值问题。',
+            '不得调用 CLI 内建 AskUserQuestion 或终端选择器；需要用户回答的问题必须通过 team report 返回 Web 对话。',
+            'team report 正文会原样以“产品经理”身份直接显示给用户。请直接对用户说，不要请求部门经理转达，不要写成发给部门经理的汇报。',
+          ].join('\n')
+        : [
+            `[${threadLabel} · 用户直接交办给 @${recipient}]`,
+            '任务内容：处理用户的直接交办，持续报告步骤并把最终结果返回 Web 对话。',
+            `项目：${workspace.name}`,
+            `工作目录：${workspace.path}`,
+            `用户消息：${body.text}`,
+            '请直接处理，并通过 team status 持续报告当前步骤，完成后通过 team report 返回 Web 对话。',
+            '不得调用 CLI 内建 AskUserQuestion 或终端选择器。',
+          ].join('\n')
+      await store.routeUserInput(
+        workspaceId,
+        `${workspaceId}:orchestrator`,
+        recipient,
+        body.text,
+        thread,
+        recipient === DEPARTMENT_MANAGER_NAME
+          ? `[${threadLabel} · 用户希望由 @${DEPARTMENT_MANAGER_NAME} 处理]\n${body.text}\n不得调用 CLI 内建 AskUserQuestion 或终端选择器；需要追问时请把问题直接写回 Web 对话。`
+          : directWorkerInstructions,
+        getRuntimePort(request)
+      )
       sendJson(response, 202, { ok: true })
     }
   ),

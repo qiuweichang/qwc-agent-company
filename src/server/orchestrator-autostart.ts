@@ -90,7 +90,7 @@ export const autostartOrchestrator = async (
 ): Promise<OrchestratorStartResult> => {
   return autostartAgent(port, workspaceId, orchestratorId, hivePort, {
     missingConfigError:
-      'No orchestrator launch config available (set HIVE_ORCHESTRATOR_COMMAND or seed a role template)',
+      'No department manager launch config available (set HIVE_ORCHESTRATOR_COMMAND or seed a role template)',
   })
 }
 

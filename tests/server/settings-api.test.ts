@@ -76,7 +76,7 @@ describe('settings api', () => {
     expect(templates).toEqual([
       expect.objectContaining({
         id: 'orchestrator',
-        name: 'Orchestrator',
+        name: '部门经理',
         role_type: 'orchestrator',
       }),
       expect.objectContaining({ id: 'coder', name: 'Coder', role_type: 'coder' }),

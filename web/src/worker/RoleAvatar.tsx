@@ -13,7 +13,7 @@ type RoleAvatarProps = {
 }
 
 const initialsByRole: Record<FullRole, string> = {
-  orchestrator: 'Or',
+  orchestrator: '部',
   coder: 'Co',
   reviewer: 'Re',
   tester: 'Te',

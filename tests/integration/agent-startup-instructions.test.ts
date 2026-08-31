@@ -136,7 +136,7 @@ describe('agent startup instructions', () => {
         const body = (await response.json()) as { output: string }
         const output = body.output.replaceAll('IN:', '')
         expect(output).toContain('[Hive 系统消息：启动说明]')
-        expect(output).toContain('你是 Alpha 的 Orchestrator')
+        expect(output).toContain('你是 Alpha 的 部门经理')
         expect(output).toContain('team send <worker-name> "<task>"')
         expect(output).toContain('team cancel --dispatch <id> "<reason>"')
         expect(output).toContain('team list')

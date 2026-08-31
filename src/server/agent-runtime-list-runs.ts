@@ -19,6 +19,7 @@ export const listRunsWithFallback = (
       pid,
       status,
       exitCode,
+      output: registry.get(runId)?.output ?? '',
       startedAt,
       endedAt: status === 'exited' || status === 'error' ? Date.now() : null,
     }))

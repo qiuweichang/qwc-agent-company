@@ -1,12 +1,28 @@
 import type { AgentSummary, TeamListItem, WorkspaceSummary } from '../shared/types.js'
+import type {
+  ConversationEntry,
+  ProjectWorkflowState,
+  WorkflowAction,
+  WorkflowThread,
+} from '../shared/workflow-types.js'
 import type { AgentManager } from './agent-manager.js'
 import type { AgentLaunchConfigInput, PersistedAgentRun } from './agent-run-store.js'
 import type { LiveAgentRun } from './agent-runtime-types.js'
 import type { DispatchRecord, ListDispatchesOptions } from './dispatch-ledger-store.js'
+import { ConflictError } from './http-errors.js'
 import type { RecoveryMessage } from './message-log-store.js'
 import type { PtyOutputBus } from './pty-output-bus.js'
+import { createSystemWorkflowMessage } from './runtime-message-builders.js'
 import { createRuntimeStoreLifecycle, createRuntimeStoreServices } from './runtime-store-helpers.js'
 import type { SettingsStore } from './settings-store.js'
+import {
+  deleteWorkspaceDeployment,
+  stopWorkspaceDeployment,
+} from './workspace-deployment.js'
+import {
+  assertWorkspaceProjectDeletionSafe,
+  deleteWorkspaceProjectFiles,
+} from './workspace-project-cleanup.js'
 import type {
   CancelTaskInput,
   DispatchTaskInput,
@@ -20,12 +36,35 @@ import type { WorkerInput, WorkspaceRecord } from './workspace-store.js'
 interface RuntimeStore {
   close: () => Promise<void>
   createWorkspace: (path: string, name: string) => WorkspaceSummary
-  deleteWorkspace: (workspaceId: string) => Promise<void>
+  /** Stops owned resources and deletes project records, optionally including its guarded directory. */
+  deleteWorkspace: (workspaceId: string, input?: { deleteFiles?: boolean }) => Promise<void>
   listWorkspaces: () => WorkspaceSummary[]
+  renameWorkspace: (workspaceId: string, name: string) => WorkspaceSummary
   addWorker: (workspaceId: string, input: WorkerInput) => AgentSummary
   deleteWorker: (workspaceId: string, workerId: string) => void
   renameWorker: (workspaceId: string, workerId: string, name: string) => AgentSummary
-  recordUserInput: (workspaceId: string, orchestratorId: string, text: string) => void
+  recordUserInput: (
+    workspaceId: string,
+    orchestratorId: string,
+    text: string,
+    thread?: WorkflowThread,
+    promptText?: string
+  ) => void
+  /** Routes a Web reply to the selected CLI member while retaining it in the selected workflow. */
+  routeUserInput: (
+    workspaceId: string,
+    orchestratorId: string,
+    recipientName: string,
+    text: string,
+    thread?: WorkflowThread,
+    promptText?: string,
+    hivePort?: string
+  ) => Promise<void>
+  /** Sends an internal lifecycle prompt to the active Orchestrator without forging a user message. */
+  notifyOrchestrator: (workspaceId: string, text: string) => void
+  getWorkflowState: (workspaceId: string) => ProjectWorkflowState
+  transitionWorkflow: (workspaceId: string, action: WorkflowAction) => ProjectWorkflowState
+  listConversationEntries: (workspaceId: string, thread: WorkflowThread) => ConversationEntry[]
   dispatchTask: (
     workspaceId: string,
     workerId: string,
@@ -123,17 +162,34 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
       return workspace
     },
     listWorkspaces: () => services.workspaceStore.listWorkspaces(),
-    deleteWorkspace: async (workspaceId) => {
+    renameWorkspace: (workspaceId, name) =>
+      services.workspaceStore.renameWorkspace(workspaceId, name),
+    deleteWorkspace: async (workspaceId, input = {}) => {
       const workspace = services.workspaceStore.getWorkspaceSnapshot(workspaceId)
+      const protectedWorkspacePaths = services.workspaceStore
+        .listWorkspaces()
+        .filter((item) => item.id !== workspaceId)
+        .map((item) => item.path)
+      if (input.deleteFiles === true) {
+        assertWorkspaceProjectDeletionSafe(workspace.summary.path, protectedWorkspacePaths)
+      }
+      stopWorkspaceDeployment(workspaceId)
       lifecycle.deleteWorkspaceShell(workspaceId)
       for (const agent of workspace.agents) {
         const activeRun = services.agentRuntime.getActiveRunByAgentId(workspaceId, agent.id)
         if (activeRun) services.agentRuntime.stopAgentRun(activeRun.runId)
-        services.agentRuntime.deleteAgentLaunchConfig(workspaceId, agent.id)
       }
       await services.tasksFileWatcher.stop(workspaceId)
+      if (input.deleteFiles === true) {
+        await deleteWorkspaceProjectFiles(workspace.summary.path, protectedWorkspacePaths)
+      }
+      deleteWorkspaceDeployment(workspaceId)
+      for (const agent of workspace.agents) {
+        services.agentRuntime.deleteAgentLaunchConfig(workspaceId, agent.id)
+      }
       runDataMutation(() => {
         services.dispatchLedgerStore.deleteWorkspaceDispatches(workspaceId)
+        services.workflowStore.remove(workspaceId)
         services.workspaceStore.deleteWorkspace(workspaceId)
       })
       if (services.settings.getAppState('active_workspace_id')?.value === workspaceId) {
@@ -153,6 +209,90 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
       })
     },
     recordUserInput: services.teamOps.recordUserInput,
+    routeUserInput: services.teamOps.routeUserInput,
+    notifyOrchestrator: services.teamOps.notifyOrchestrator,
+    getWorkflowState: (workspaceId) => services.workflowStore.get(workspaceId),
+    transitionWorkflow: (workspaceId, action) => {
+      const workspace = services.workspaceStore.getWorkspaceSnapshot(workspaceId)
+      if (action === 'approve_architecture' || action === 'approve_ui') {
+        const roleHint = action === 'approve_architecture' ? '架构' : 'UI'
+        const hasArtifact = services.messageLogStore
+          .listConversationMessages(workspaceId, 'planning')
+          .some((message) => {
+            if (message.type !== 'report' || message.artifacts.length === 0) return false
+            const actor = workspace.agents.find(
+              (agent) => agent.id === (message.fromAgentId ?? message.workerId)
+            )
+            return actor?.name.includes(roleHint) === true
+          })
+        if (!hasArtifact) throw new ConflictError(`${roleHint}方案尚未提交可确认产物`)
+      }
+      const transition = services.workflowStore.transition(workspaceId, action)
+      services.messageLogStore.insertMessage(
+        createSystemWorkflowMessage(workspaceId, transition.eventText, transition.thread)
+      )
+      services.teamOps.notifyOrchestrator(
+        workspaceId,
+        `[Agent Company 流程事件] ${transition.eventText}`
+      )
+      return transition.state
+    },
+    listConversationEntries: (workspaceId, thread) =>
+      services.messageLogStore.listConversationMessages(workspaceId, thread).map((message) => {
+        if (message.type === 'user_input') {
+          return {
+            actorId: null,
+            actorName: '你',
+            actorRole: 'user',
+            artifacts: message.artifacts,
+            createdAt: message.createdAt,
+            id: message.sequence,
+            status: message.status,
+            text: message.text,
+            thread: message.thread,
+            type: 'user_input' as const,
+          }
+        }
+
+        if (message.type === 'system_workflow') {
+          return {
+            actorId: null,
+            actorName: '流程系统',
+            actorRole: 'system',
+            artifacts: message.artifacts,
+            createdAt: message.createdAt,
+            id: message.sequence,
+            status: message.status,
+            text: message.text,
+            thread: message.thread,
+            type: 'system' as const,
+          }
+        }
+
+        const actorId = message.fromAgentId ?? message.workerId
+        const actor = services.workspaceStore.getAgent(workspaceId, actorId)
+        const recipient = message.toAgentId
+          ? services.workspaceStore.getAgent(workspaceId, message.toAgentId)
+          : null
+        return {
+          actorId: actor.id,
+          actorName: actor.name,
+          actorRole: actor.role,
+          artifacts: message.artifacts,
+          createdAt: message.createdAt,
+          id: message.sequence,
+          ...(recipient ? { recipientName: recipient.name } : {}),
+          status: message.status,
+          text: message.text,
+          thread: message.thread,
+          type:
+            message.type === 'send'
+              ? ('dispatch' as const)
+              : message.type === 'status'
+                ? ('status' as const)
+                : ('report' as const),
+        }
+      }),
     cancelTask: services.teamOps.cancelTask,
     dispatchTask: services.teamOps.dispatchTask,
     dispatchTaskByWorkerName: services.teamOps.dispatchTaskByWorkerName,

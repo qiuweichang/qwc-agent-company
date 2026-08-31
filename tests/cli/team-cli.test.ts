@@ -239,7 +239,7 @@ describe('team cli with real server', () => {
     }
 
     await expect(runTeamCommand(['report', 'orchestrator should not report'])).rejects.toThrow(
-      "Request failed with status 403: Role 'orchestrator' is not allowed to run team report"
+      "Request failed with status 403: Role '部门经理' is not allowed to run team report"
     )
 
     const workspaceId = process.env.HIVE_PROJECT_ID

@@ -16,7 +16,7 @@ describe('RoleAvatar', () => {
     ['reviewer', 'Re'],
     ['tester', 'Te'],
     ['custom', 'Cu'],
-    ['orchestrator', 'Or'],
+    ['orchestrator', '部'],
   ])('role=%s renders initials %s', (role, expected) => {
     render(<RoleAvatar role={role as never} />)
     expect(screen.getByTestId('role-avatar').textContent).toBe(expected)

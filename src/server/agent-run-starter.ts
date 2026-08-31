@@ -10,7 +10,11 @@ import { buildAgentStartupInstructions } from './agent-startup-instructions.js'
 import type { AgentTokenRegistry } from './agent-tokens.js'
 import type { CommandPresetRecord } from './command-preset-store.js'
 import type { LiveRunRegistry } from './live-run-registry.js'
-import { createPostStartInputWriter, isInteractiveAgentCommand } from './post-start-input-writer.js'
+import {
+  createPostStartInputWriter,
+  isInteractiveAgentCommand,
+  prepareInteractiveAgentRun,
+} from './post-start-input-writer.js'
 import type { RestartPolicy } from './restart-policy.js'
 
 interface AgentRunStarterInput {
@@ -60,6 +64,7 @@ export const createAgentRunStarter =
     const token = tokenRegistry.issue(agentId)
     const exitContext: AgentRunExitContext = {
       agentId,
+      getRunSnapshot: (runId) => agentManager.getRun(runId),
       handledRunExits,
       onAgentExit,
       registry,
@@ -124,7 +129,7 @@ export const createAgentRunStarter =
     registry.add(liveRun)
 
     if (run.status === 'error') {
-      store.updatePersistedRun(run.runId, 'error', run.exitCode, Date.now())
+      store.updatePersistedRun(run.runId, 'error', run.exitCode, Date.now(), run.output)
       if (startConfig.resumedSessionId) {
         sessionStore.clearLastSessionId(workspace.id, agentId)
       }
@@ -141,7 +146,11 @@ export const createAgentRunStarter =
       agentManager,
       startConfig.interactiveCommand ?? startConfig.command
     )
-    queueMicrotask(() => {
+    void prepareInteractiveAgentRun(
+      agentManager,
+      run.runId,
+      startConfig.interactiveCommand ?? startConfig.command
+    ).then(() => {
       try {
         const injectedRestartMessage = restartPolicy.injectPostStartMessage({
           agentId,

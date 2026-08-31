@@ -145,7 +145,7 @@ describe('cross workspace send isolation', () => {
           const bodyB = (await responseB.json()) as { output: string }
 
           expect(bodyA.output).toContain('A:')
-          expect(bodyA.output).toContain('@Orchestrator')
+          expect(bodyA.output).toContain('@部门经理')
           expect(bodyA.output).toContain('实现登录')
           expect(bodyB.output).not.toContain('实现登录')
         },

@@ -26,6 +26,8 @@ const TEAM_USAGE = [
   '  team report --stdin [--dispatch <dispatch-id>] [--artifact <path>]',
   '  team status "<current status>" [--artifact <path>]',
   '  team status --stdin [--artifact <path>]',
+  '  team stitch generate (<prompt> | --stdin) --title <project-title>',
+  '  team stitch revise (<prompt> | --stdin) --project <stitch-project-id> --screen <screen-id>',
   '',
   'Flags can appear in any order. Use --stdin to pipe long bodies and avoid shell-escaping issues.',
   "Use a quoted heredoc (<<'EOF') so $vars, backticks, and command substitutions stay literal:",
@@ -123,8 +125,17 @@ const REPORT_USAGE =
   'Usage: team report (<result> | --stdin) [--dispatch <dispatch-id>] [--artifact <path>]'
 const STATUS_USAGE = 'Usage: team status (<current status> | --stdin) [--artifact <path>]'
 const CANCEL_USAGE = 'Usage: team cancel --dispatch <dispatch-id> <reason>'
+const STITCH_GENERATE_USAGE =
+  'Usage: team stitch generate (<prompt> | --stdin) --title <project-title>'
+const STITCH_REVISE_USAGE =
+  'Usage: team stitch revise (<prompt> | --stdin) --project <stitch-project-id> --screen <screen-id>'
 
-const usageFor = (command: string) => (command === 'status' ? STATUS_USAGE : REPORT_USAGE)
+const usageFor = (command: string) => {
+  if (command === 'status') return STATUS_USAGE
+  if (command === 'stitch-generate') return STITCH_GENERATE_USAGE
+  if (command === 'stitch-revise') return STITCH_REVISE_USAGE
+  return REPORT_USAGE
+}
 
 const withUsage = (message: string, command: string) => `${message}\n\n${usageFor(command)}`
 
@@ -276,6 +287,89 @@ export const readStdinToString = async (command = 'report'): Promise<string> => 
   return content
 }
 
+interface ParsedStitchGenerateArgs {
+  projectTitle: string
+  prompt: string | null
+  useStdin: boolean
+}
+
+interface ParsedStitchReviseArgs {
+  projectId: string
+  prompt: string | null
+  screenId: string
+  useStdin: boolean
+}
+
+/** Parses the intentionally small Stitch generation surface available to UI designers. */
+export const parseStitchGenerateArgs = (args: string[]): ParsedStitchGenerateArgs => {
+  const positionals: string[] = []
+  let projectTitle = ''
+  let useStdin = false
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === '--stdin') {
+      useStdin = true
+      continue
+    }
+    if (arg === '--title') {
+      const value = args[index + 1]
+      if (!value || value.startsWith('--')) throw new Error('--title requires a value')
+      projectTitle = value
+      index += 1
+      continue
+    }
+    if (arg?.startsWith('--')) throw new Error(`Unknown Stitch argument: ${arg}`)
+    if (arg) positionals.push(arg)
+  }
+  if (!projectTitle.trim()) throw new Error('Stitch generation requires --title <project-title>')
+  if (useStdin && positionals.length > 0)
+    throw new Error('--stdin cannot be combined with a prompt argument')
+  if (!useStdin && positionals.length === 0)
+    throw new Error('Stitch generation requires a prompt or --stdin')
+  return {
+    projectTitle: projectTitle.trim(),
+    prompt: useStdin ? null : positionals.join(' '),
+    useStdin,
+  }
+}
+
+/** Parses a revision request while keeping Stitch resource IDs separate from prompt text. */
+export const parseStitchReviseArgs = (args: string[]): ParsedStitchReviseArgs => {
+  const positionals: string[] = []
+  let projectId = ''
+  let screenId = ''
+  let useStdin = false
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+    if (arg === '--stdin') {
+      useStdin = true
+      continue
+    }
+    if (arg === '--project' || arg === '--screen') {
+      const value = args[index + 1]
+      if (!value || value.startsWith('--')) throw new Error(`${arg} requires a value`)
+      if (arg === '--project') projectId = value
+      else screenId = value
+      index += 1
+      continue
+    }
+    if (arg?.startsWith('--')) throw new Error(`Unknown Stitch argument: ${arg}`)
+    if (arg) positionals.push(arg)
+  }
+  if (!projectId.trim()) throw new Error('Stitch revision requires --project <stitch-project-id>')
+  if (!screenId.trim()) throw new Error('Stitch revision requires --screen <screen-id>')
+  if (useStdin && positionals.length > 0)
+    throw new Error('--stdin cannot be combined with a prompt argument')
+  if (!useStdin && positionals.length === 0)
+    throw new Error('Stitch revision requires a prompt or --stdin')
+  return {
+    projectId: projectId.trim(),
+    prompt: useStdin ? null : positionals.join(' '),
+    screenId: screenId.trim(),
+    useStdin,
+  }
+}
+
 export const runTeamCommand = async (argv: string[]) => {
   const [command, ...args] = argv
 
@@ -324,6 +418,44 @@ export const runTeamCommand = async (argv: string[]) => {
     return
   }
 
+  if (command === 'stitch') {
+    const [action, ...stitchArgs] = args
+    const env = getHiveEnv()
+    const baseUrl = getBaseUrl(env)
+    if (action === 'generate') {
+      const input = parseStitchGenerateArgs(stitchArgs)
+      const prompt = input.useStdin
+        ? await readStdinToString('stitch-generate')
+        : (input.prompt ?? '')
+      const response = await postJson(baseUrl, '/api/integrations/stitch/generate', {
+        from_agent_id: env.HIVE_AGENT_ID,
+        project_id: env.HIVE_PROJECT_ID,
+        project_title: input.projectTitle,
+        prompt,
+        token: env.HIVE_AGENT_TOKEN,
+      })
+      console.log(JSON.stringify(await response.json()))
+      return
+    }
+    if (action === 'revise') {
+      const input = parseStitchReviseArgs(stitchArgs)
+      const prompt = input.useStdin
+        ? await readStdinToString('stitch-revise')
+        : (input.prompt ?? '')
+      const response = await postJson(baseUrl, '/api/integrations/stitch/revise', {
+        from_agent_id: env.HIVE_AGENT_ID,
+        project_id: env.HIVE_PROJECT_ID,
+        prompt,
+        screen_id: input.screenId,
+        stitch_project_id: input.projectId,
+        token: env.HIVE_AGENT_TOKEN,
+      })
+      console.log(JSON.stringify(await response.json()))
+      return
+    }
+    throw new Error(`${STITCH_GENERATE_USAGE}\n${STITCH_REVISE_USAGE}`)
+  }
+
   if (command === 'cancel') {
     const cancel = parseCancelArgs(args)
     const env = getHiveEnv()
@@ -354,7 +486,7 @@ export const runTeamCommand = async (argv: string[]) => {
     const payload = (await response.json()) as TeamReportResponse
     if (payload.forwarded === false && payload.forward_error) {
       console.error(
-        `Hive recorded the status update, but could not deliver it to Orchestrator in real time: ${payload.forward_error}`
+        `Hive recorded the status update, but could not deliver it to Department Manager in real time: ${payload.forward_error}`
       )
     }
     return
@@ -377,7 +509,7 @@ export const runTeamCommand = async (argv: string[]) => {
     const payload = (await response.json()) as TeamReportResponse
     if (payload.forwarded === false && payload.forward_error) {
       console.error(
-        `Hive recorded the report, but could not deliver it to Orchestrator in real time: ${payload.forward_error}`
+        `Hive recorded the report, but could not deliver it to Department Manager in real time: ${payload.forward_error}`
       )
     }
     return

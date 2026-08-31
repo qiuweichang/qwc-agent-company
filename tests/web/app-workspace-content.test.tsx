@@ -75,7 +75,7 @@ describe('AppWorkspaceContent', () => {
     }
     const polledRun: TerminalRunSummary = {
       agent_id: `${workspace.id}:orchestrator`,
-      agent_name: 'Orchestrator',
+      agent_name: '部门经理',
       run_id: 'polled-run',
       status: 'running',
     }

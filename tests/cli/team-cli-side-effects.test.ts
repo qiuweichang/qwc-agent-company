@@ -133,7 +133,7 @@ describe('team send CLI side effects (R1.3)', () => {
       await waitFor(async () => {
         const run = hive.store.getActiveRunByAgentId(workspace.id, worker.id)
         expect(run?.output).toContain('WRK:')
-        expect(run?.output).toContain('@Orchestrator')
+        expect(run?.output).toContain('@部门经理')
         expect(run?.output).toContain('你的角色：')
         expect(run?.output).toContain('实现登录')
         expect(run?.output).toContain(`dispatch_id: ${dispatch?.id}`)

@@ -7,7 +7,7 @@ published in this repository.
 ## What Hive Is
 
 Hive is a browser-native workbench for coordinating multiple local CLI agents.
-Users create a workspace, start one Orchestrator agent, add worker agents, and
+Users create a workspace, start one Department Manager agent, add worker agents, and
 let them communicate through Hive's injected `team` protocol.
 
 Key properties:

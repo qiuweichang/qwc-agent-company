@@ -1,11 +1,22 @@
 import type { OpenTargetId, OpenWorkspaceErrorCode } from '../../src/shared/open-targets.js'
 import type {
+  ArchivedProjectFile,
+  MemberPlan,
+  ProjectDeployment,
+} from '../../src/shared/project-operations.js'
+import type {
   AgentSummary,
   TeamListItem,
   TeamListItemPayload,
   WorkerRole,
   WorkspaceSummary,
 } from '../../src/shared/types.js'
+import type {
+  ConversationEntry,
+  ProjectWorkflowState,
+  WorkflowAction,
+  WorkflowThread,
+} from '../../src/shared/workflow-types.js'
 
 export type { OpenTargetId, OpenWorkspaceErrorCode }
 
@@ -72,6 +83,79 @@ export const listWorkspaces = async (): Promise<WorkspaceSummary[]> => {
   }
 
   return (await response.json()) as WorkspaceSummary[]
+}
+
+/** Renames one local project without changing its workspace path or workflow history. */
+export const renameWorkspace = async (
+  workspaceId: string,
+  name: string
+): Promise<WorkspaceSummary> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}`, {
+    body: JSON.stringify({ name }),
+    headers: { 'content-type': 'application/json' },
+    method: 'PATCH',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to rename project'))
+  return (await response.json()) as WorkspaceSummary
+}
+
+/** Loads the server-derived implementation checklist for every team member. */
+export const listMemberPlans = async (workspaceId: string): Promise<MemberPlan[]> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/member-plans`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load member plans'))
+  return (await response.json()) as MemberPlan[]
+}
+
+/** Indexes project-owned requirements, designs, code, tests and delivery scripts. */
+export const listProjectArchive = async (workspaceId: string): Promise<ArchivedProjectFile[]> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/archive`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load archive'))
+  return (await response.json()) as ArchivedProjectFile[]
+}
+
+/** Opens the containing folder for one archived file in the native Windows Explorer. */
+export const openArchivedFileLocation = async (workspaceId: string, path: string) => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/archive/open`, {
+    body: JSON.stringify({ path }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to open Explorer'))
+}
+
+/** Reads the latest local deployment state for one delivered project. */
+export const getProjectDeployment = async (
+  workspaceId: string
+): Promise<ProjectDeployment | null> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/deployment`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load deployment'))
+  return (await response.json()) as ProjectDeployment | null
+}
+
+/** Generates Windows scripts and starts frontend/backend on free or requested ports. */
+export const deployProject = async (
+  workspaceId: string,
+  input: { backendPort?: number; frontendPort?: number } = {}
+): Promise<ProjectDeployment> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/deployment`, {
+    body: JSON.stringify({
+      backend_port: input.backendPort,
+      frontend_port: input.frontendPort,
+    }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to deploy project'))
+  return (await response.json()) as ProjectDeployment
+}
+
+/** Stops only the frontend/backend processes recorded for this workspace deployment. */
+export const stopProjectDeployment = async (workspaceId: string) => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/deployment`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to stop deployment'))
+  return (await response.json()) as ProjectDeployment | null
 }
 
 export interface VersionInfo {
@@ -214,8 +298,161 @@ export const createWorkspace = async (input: {
   return (await response.json()) as CreateWorkspaceResponse
 }
 
+/** Starts real project-specific PM discovery through the already-running department manager. */
+export const startProjectPlanning = async (workspaceId: string): Promise<void> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/planning-kickoff`, {
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to start planning'))
+}
+
+interface ProjectWorkflowStatePayload {
+  active_thread: ProjectWorkflowState['activeThread']
+  architecture_status: ProjectWorkflowState['architectureStatus']
+  requirements_frozen: boolean
+  stage: ProjectWorkflowState['stage']
+  ui_status: ProjectWorkflowState['uiStatus']
+  updated_at: number
+  workspace_id: string
+}
+
+interface ConversationEntryPayload {
+  actor_id: string | null
+  actor_name: string
+  actor_role: string
+  artifacts: string[]
+  created_at: number
+  id: number
+  recipient_name: string | null
+  status: string | null
+  text: string
+  thread: WorkflowThread
+  type: ConversationEntry['type']
+}
+
+const fromWorkflowPayload = (payload: ProjectWorkflowStatePayload): ProjectWorkflowState => ({
+  activeThread: payload.active_thread,
+  architectureStatus: payload.architecture_status,
+  requirementsFrozen: payload.requirements_frozen,
+  stage: payload.stage,
+  uiStatus: payload.ui_status,
+  updatedAt: payload.updated_at,
+  workspaceId: payload.workspace_id,
+})
+
+/** Loads the durable lifecycle gates for one project workspace. */
+export const getProjectWorkflow = async (workspaceId: string): Promise<ProjectWorkflowState> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/workflow`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load workflow'))
+  return fromWorkflowPayload((await response.json()) as ProjectWorkflowStatePayload)
+}
+
+/** Loads one planning or execution conversation without mixing thread history. */
+export const listConversation = async (
+  workspaceId: string,
+  thread: WorkflowThread
+): Promise<ConversationEntry[]> => {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/conversation?thread=${encodeURIComponent(thread)}`
+  )
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load conversation'))
+  return ((await response.json()) as ConversationEntryPayload[]).map((entry) => ({
+    actorId: entry.actor_id,
+    actorName: entry.actor_name,
+    actorRole: entry.actor_role,
+    artifacts: entry.artifacts,
+    createdAt: entry.created_at,
+    id: entry.id,
+    ...(entry.recipient_name ? { recipientName: entry.recipient_name } : {}),
+    status: entry.status,
+    text: entry.text,
+    thread: entry.thread,
+    type: entry.type,
+  }))
+}
+
+/** Applies one validated lifecycle action and returns the resulting server state. */
+export const transitionProjectWorkflow = async (
+  workspaceId: string,
+  action: WorkflowAction
+): Promise<ProjectWorkflowState> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/workflow/actions`, {
+    body: JSON.stringify({ action }),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to update workflow'))
+  return fromWorkflowPayload((await response.json()) as ProjectWorkflowStatePayload)
+}
+
+/** Sends user text to the department manager while preserving its visible recipient and thread. */
+export const sendProjectMessage = async (
+  workspaceId: string,
+  input: { recipient: string; text: string; thread: WorkflowThread }
+): Promise<void> => {
+  const response = await apiFetch(`/api/workspaces/${workspaceId}/user-input`, {
+    body: JSON.stringify(input),
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+  })
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to send message'))
+}
+
+/** Builds the authenticated artifact URL served from inside the project workspace. */
+export const getWorkspaceArtifactUrl = (workspaceId: string, path: string) =>
+  `/api/workspaces/${workspaceId}/artifact?path=${encodeURIComponent(path)}`
+
+export interface StitchStatus {
+  configured: boolean
+  endpointOrigin: string | null
+}
+
+export interface StitchConfigurationInput {
+  apiKey?: string
+  clearApiKey?: boolean
+  endpoint: string
+}
+
+/** Reads whether the Runtime has real Stitch MCP credentials configured. */
+export const getStitchStatus = async (): Promise<StitchStatus> => {
+  const response = await apiFetch('/api/integrations/stitch/status')
+  if (!response.ok)
+    throw new Error(await readErrorMessage(response, 'Failed to load Stitch status'))
+  const payload = (await response.json()) as {
+    configured: boolean
+    endpoint_origin: string | null
+  }
+  return { configured: payload.configured, endpointOrigin: payload.endpoint_origin }
+}
+
+/** Persists local Stitch MCP credentials without returning the API key to the browser. */
+export const saveStitchConfiguration = async (
+  input: StitchConfigurationInput
+): Promise<StitchStatus> => {
+  const response = await apiFetch('/api/integrations/stitch/config', {
+    body: JSON.stringify({
+      api_key: input.apiKey,
+      clear_api_key: input.clearApiKey ?? false,
+      endpoint: input.endpoint,
+    }),
+    headers: { 'content-type': 'application/json' },
+    method: 'PUT',
+  })
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(response, 'Failed to save Stitch configuration'))
+  }
+  const payload = (await response.json()) as {
+    configured: boolean
+    endpoint_origin: string | null
+  }
+  return { configured: payload.configured, endpointOrigin: payload.endpoint_origin }
+}
+
+/** Permanently removes an Agent Company project together with its dedicated local directory. */
 export const deleteWorkspace = async (workspaceId: string): Promise<void> => {
-  const response = await apiFetch(`/api/workspaces/${workspaceId}`, { method: 'DELETE' })
+  const response = await apiFetch(`/api/workspaces/${workspaceId}?delete_files=true`, {
+    method: 'DELETE',
+  })
 
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, 'Failed to delete workspace'))
@@ -319,6 +556,107 @@ export interface TerminalRunSummary {
   run_id: string
   status: string
   terminal_input_profile?: TerminalInputProfile
+}
+
+export interface TerminalRunDetails {
+  agentId: string
+  exitCode: number | null
+  output: string
+  pid: number | null
+  runId: string
+  status: string
+}
+
+export interface HistoricalTerminalRun {
+  agentId: string
+  endedAt: number | null
+  exitCode: number | null
+  output: string
+  pid: number | null
+  runId: string
+  startedAt: number
+  status: string
+}
+
+export interface MemberProcessContext {
+  dispatches: Array<{
+    artifacts: string[]
+    createdAt: number
+    id: string
+    reportText: string | null
+    reportedAt: number | null
+    status: DispatchSummary['status']
+    text: string
+    toAgentId: string
+  }>
+  messages: ConversationEntry[]
+  runs: HistoricalTerminalRun[]
+}
+
+export interface DispatchSummary {
+  artifacts: string[]
+  createdAt: number
+  id: string
+  reportText: string | null
+  reportedAt: number | null
+  status: 'queued' | 'submitted' | 'reported' | 'cancelled'
+  text: string
+  toAgentId: string
+}
+
+interface DispatchSummaryPayload {
+  artifacts: string[]
+  created_at: number
+  id: string
+  report_text: string | null
+  reported_at: number | null
+  state: DispatchSummary['status']
+  text: string
+  to_agent_id: string
+}
+
+/** Loads durable assignments so a member drawer can show full hidden task instructions. */
+export const listDispatches = async (workspaceId: string): Promise<DispatchSummary[]> => {
+  const response = await apiFetch(`/api/ui/workspaces/${workspaceId}/dispatches?limit=100`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load dispatches'))
+  return ((await response.json()) as DispatchSummaryPayload[]).map((dispatch) => ({
+    artifacts: dispatch.artifacts,
+    createdAt: dispatch.created_at,
+    id: dispatch.id,
+    reportText: dispatch.report_text,
+    reportedAt: dispatch.reported_at,
+    status: dispatch.state,
+    text: dispatch.text,
+    toAgentId: dispatch.to_agent_id,
+  }))
+}
+
+/** Reads the complete buffered PTY transcript for one currently live CLI run. */
+export const getTerminalRun = async (runId: string): Promise<TerminalRunDetails> => {
+  const response = await apiFetch(`/api/runtime/runs/${runId}`)
+  if (!response.ok) throw new Error(await readErrorMessage(response, 'Failed to load CLI context'))
+  const payload = (await response.json()) as {
+    agentId: string
+    exitCode: number | null
+    output: string
+    pid: number | null
+    runId: string
+    status: string
+  }
+  return payload
+}
+
+/** Loads every durable run transcript plus assignments and reports for one member. */
+export const getMemberProcessContext = async (
+  workspaceId: string,
+  agentId: string
+): Promise<MemberProcessContext> => {
+  const response = await apiFetch(
+    `/api/workspaces/${workspaceId}/agents/${encodeURIComponent(agentId)}/context`
+  )
+  if (!response.ok)
+    throw new Error(await readErrorMessage(response, 'Failed to load member context'))
+  return (await response.json()) as MemberProcessContext
 }
 
 export const workspaceShellAgentId = (workspaceId: string): string => `${workspaceId}:shell`

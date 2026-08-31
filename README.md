@@ -9,7 +9,7 @@
 </p>
 
 **Run Claude Code, Codex, Gemini, OpenCode, Qwen, and other CLI agents as a visible local team.** Hive gives you one browser workbench where an
-Orchestrator plans and delegates while workers implement, review, test,
+The Department Manager plans and delegates while workers implement, review, test,
 research, and report back — all as real PTY processes on your laptop.
 
 Use Hive when one agent is not enough, but a pile of terminal windows is not a workflow.
@@ -35,7 +35,7 @@ English · [简体中文](./README.zh.md)
 > the npm commands below.
 
 <p align="center">
-  <img src="./assets/hive-team-view.png" alt="Hive workbench with a 4-agent team — orchestrator dispatching while workers run" />
+  <img src="./assets/hive-team-view.png" alt="Hive workbench with a 4-agent team — Department Manager dispatching while workers run" />
 </p>
 
 ## Why Hive
@@ -50,7 +50,7 @@ awkward:
 - Worker progress disappears into scrollback.
 - Restart recovery depends on each CLI's native session behavior.
 
-Hive adds the coordination layer without replacing the CLIs. The Orchestrator
+Hive adds the coordination layer without replacing the CLIs. The Department Manager
 is a real `agy` / `claude` / `codex` / `opencode` / `gemini` / `hermes` /
 `qwen` process, not a scripted PM. Workers are real CLI agents too. Hive
 injects a small `team` command into their shells, so they can dispatch,
@@ -60,9 +60,9 @@ report, and keep a shared markdown task graph at `<workspace>/.hive/tasks.md`.
 
 **Ship a PR with a reviewer in the loop**
 
-Ask the Orchestrator to implement a change, spawn a reviewer, and keep the
+Ask the Department Manager to implement a change, spawn a reviewer, and keep the
 review feedback visible before you merge. The coder edits; the reviewer checks
-the diff; the Orchestrator decides what still needs work.
+the diff; the Department Manager decides what still needs work.
 
 ```text
 Ship the settings search bugfix. Use one worker to implement it and another to
@@ -95,7 +95,7 @@ one draft, and one verify every command and file reference.
 
 Don't have an agent CLI installed yet? Run `hive`, open the printed URL, and
 click **Try Demo** in the first-run wizard. You get a fully client-side
-preview — fake orchestrator + two workers, prerecorded scrollback, a
+preview — fake Department Manager + two workers, prerecorded scrollback, a
 prefilled task list — without touching the server or any real CLI agent.
 Useful for deciding whether to install a real CLI.
 
@@ -167,20 +167,20 @@ policy, not a Hive bug.
 First-run flow:
 
 1. Create a workspace from a project folder.
-2. Choose an Orchestrator preset.
-3. Hive creates `<workspace>/.hive/tasks.md`, starts the Orchestrator PTY, and
+2. Choose a Department Manager preset.
+3. Hive creates `<workspace>/.hive/tasks.md`, starts the Department Manager PTY, and
    injects the internal `team` command into the agent session.
 4. Add workers from the Team Members panel.
-5. Ask the Orchestrator to delegate work. It sends tasks with
+5. Ask the Department Manager to delegate work. It sends tasks with
    `team send <worker-name> "<task>"`; workers report back with `team report`.
 
-If you want the Orchestrator to size the team itself, leave **Auto-staff**
+If you want the Department Manager to size the team itself, leave **Auto-staff**
 enabled (it is on by default). It can `team spawn` the right temporary mix of
 coders, testers, and reviewers for the task, then Hive dismisses those
 temporary workers when their work is done.
 
 For stronger automation, enable the experimental **Workflows** toggle in
-settings. The Orchestrator can then author and run multi-agent workflows that
+settings. The Department Manager can then author and run multi-agent workflows that
 fan out across implementation, review, testing, or other stages. The topbar
 **Workflows** panel shows runs, phase results, logs, schedules, and stop
 controls. The same panel also lets you choose which CLI workflow-created
@@ -197,7 +197,7 @@ Browser UI on 127.0.0.1
 Hive runtime
   SQLite metadata, PTY lifecycle, task dispatch
           |
-          +-- Orchestrator PTY
+          +-- Department Manager PTY
           |     can call: team send, team list, team report
           |
           +-- Worker PTY
@@ -240,13 +240,13 @@ same shell environment you use to start Hive.
 ## What Hive Provides
 
 - Workspace sidebar for switching between local projects.
-- Orchestrator and worker terminals backed by real PTYs.
+- Department Manager and worker terminals backed by real PTYs.
 - Add Worker flow with role presets for coder, reviewer, tester, and fully
   custom prompts and commands — wire any CLI agent into the role you need.
-- Auto-staff (experimental, on by default): the Orchestrator can create
+- Auto-staff (experimental, on by default): the Department Manager can create
   temporary coders, testers, and reviewers based on the task, and Hive cleans
   them up after their dispatch reports back.
-- Workflows (experimental, off by default): the Orchestrator can run
+- Workflows (experimental, off by default): the Department Manager can run
   multi-stage, multi-agent workflows while Hive shows runs, logs, results,
   schedules, and stop controls in the Workflows panel.
 - Workflow CLI policy: choose the default CLI for workflow-created agents and

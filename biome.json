@@ -7,6 +7,8 @@
       "!**/dist",
       "!coverage",
       "!node_modules",
+      "!vendor",
+      "!web/public/artifacts",
       "!docs/mockups",
       "!**/*.css"
     ],

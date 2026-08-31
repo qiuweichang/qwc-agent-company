@@ -105,6 +105,7 @@ describe('schema version', () => {
     expect(workerColumns.has('last_session_id')).toBe(true)
     expect(agentRunColumns.has('pid')).toBe(true)
     expect(agentRunColumns.has('ended_at')).toBe(true)
+    expect(agentRunColumns.has('output_text')).toBe(true)
     expect(launchConfigColumns.has('command_preset_id')).toBe(true)
     expect(launchConfigColumns.has('interactive_command')).toBe(true)
     expect(launchConfigColumns.has('preset_augmentation_disabled')).toBe(true)
@@ -141,6 +142,7 @@ describe('schema version', () => {
     )
     expect(appStateColumns).toEqual(new Set(['key', 'value', 'updated_at']))
     expect(messageColumns.has('kind')).toBe(false)
+    expect(messageColumns.has('thread')).toBe(true)
     expect(dispatchColumns).toEqual(
       new Set([
         'sequence',
@@ -170,8 +172,8 @@ describe('schema version', () => {
       .prepare('SELECT key, value FROM app_state WHERE key = ?')
       .get('active_workspace_id') as { key: string; value: string | null } | undefined
 
-    expect(presetCount.count).toBe(4)
-    expect(roleTemplateCount.count).toBe(4)
+    expect(presetCount.count).toBe(2)
+    expect(roleTemplateCount.count).toBe(7)
     expect(appState).toEqual({ key: 'active_workspace_id', value: null })
 
     db.close()
@@ -252,7 +254,7 @@ describe('schema version', () => {
     db.close()
   })
 
-  test('migration updates builtin resume support for all supported agent presets', () => {
+  test('migration retains resume support only for Claude and Codex presets', () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'hive-schema-agent-resume-'))
     tempDirs.push(dataDir)
 
@@ -328,9 +330,6 @@ describe('schema version', () => {
 
     const claude = expectPreset('claude')
     const codex = expectPreset('codex')
-    const gemini = expectPreset('gemini')
-    const opencode = expectPreset('opencode')
-
     expect(claude.resume_args_template).toBe('--resume {session_id}')
     expect(JSON.parse(claude.session_id_capture ?? '{}')).toMatchObject({
       source: 'claude_project_jsonl_dir',
@@ -342,16 +341,7 @@ describe('schema version', () => {
     expect(JSON.parse(codex.yolo_args_template ?? '[]')).toEqual([
       '--dangerously-bypass-approvals-and-sandbox',
     ])
-    expect(gemini.resume_args_template).toBe('--resume {session_id}')
-    expect(JSON.parse(gemini.session_id_capture ?? '{}')).toMatchObject({
-      source: 'gemini_session_json_dir',
-    })
-    expect(JSON.parse(gemini.yolo_args_template ?? '[]')).toEqual(['--yolo'])
-    expect(opencode.resume_args_template).toBe('--session {session_id}')
-    expect(JSON.parse(opencode.session_id_capture ?? '{}')).toMatchObject({
-      source: 'opencode_session_db',
-    })
-    expect(JSON.parse(opencode.yolo_args_template ?? '[]')).toEqual([])
+    expect(Object.keys(byId).sort()).toEqual(['claude', 'codex'])
     expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(10)).toEqual({
       version: 10,
     })
@@ -429,8 +419,7 @@ describe('schema version', () => {
       '--disallowedTools=Task',
     ])
     expect(byId.codex).toEqual(['--dangerously-bypass-approvals-and-sandbox'])
-    expect(byId.gemini).toEqual(['--yolo'])
-    expect(byId.opencode).toEqual([])
+    expect(Object.keys(byId).sort()).toEqual(['claude', 'codex'])
     expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(11)).toEqual({
       version: 11,
     })
@@ -438,7 +427,7 @@ describe('schema version', () => {
     db.close()
   })
 
-  test('migration clears builtin OpenCode yolo args for existing v16 databases', () => {
+  test('migration removes unsupported and custom command presets from existing databases', () => {
     const dataDir = mkdtempSync(join(tmpdir(), 'hive-schema-opencode-yolo-'))
     tempDirs.push(dataDir)
 
@@ -539,9 +528,7 @@ describe('schema version', () => {
       '--disallowedTools=Task',
     ])
     expect(byId.codex).toEqual(['--dangerously-bypass-approvals-and-sandbox'])
-    expect(byId.gemini).toEqual(['--yolo'])
-    expect(byId.opencode).toEqual([])
-    expect(byId['custom-opencode']).toEqual(['--dangerously-skip-permissions'])
+    expect(Object.keys(byId).sort()).toEqual(['claude', 'codex'])
     expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(18)).toEqual({
       version: 18,
     })
@@ -602,17 +589,19 @@ describe('schema version', () => {
     initializeRuntimeDatabase(db)
 
     const rows = db
-      .prepare('SELECT id, description FROM role_templates ORDER BY id')
-      .all() as Array<{ description: string; id: string }>
+      .prepare('SELECT id, name, description FROM role_templates ORDER BY id')
+      .all() as Array<{ description: string; id: string; name: string }>
     const byId = Object.fromEntries(rows.map((row) => [row.id, row.description]))
 
-    expect(byId.coder).toContain('实现型 Coder')
-    expect(byId.coder).toContain('交付说明要包含')
-    expect(byId.reviewer).toContain('监工型 Reviewer')
-    expect(byId.reviewer).toContain('blocking 问题')
-    expect(byId.tester).toContain('验证型 Tester')
-    expect(byId.orchestrator).toContain('组织右侧真实成员协作')
+    expect(byId.product_manager).toContain('grilling/SKILL.md')
+    expect(byId.architect).toContain('vendor/archify/SKILL.md')
+    expect(byId.ui_designer).toContain('team stitch generate')
+    expect(byId.frontend_engineer).toContain('前端工程师')
+    expect(byId.backend_engineer).toContain('后端工程师')
+    expect(byId.test_engineer).toContain('浏览器点击')
+    expect(byId.orchestrator).toContain('规划线程')
     expect(byId.orchestrator).toContain('.hive/tasks.md')
+    expect(rows.find((row) => row.id === 'orchestrator')?.name).toBe('部门经理')
     expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(12)).toEqual({
       version: 12,
     })
@@ -1023,6 +1012,59 @@ describe('schema version', () => {
 
     expect(migratedColumns.has('kind')).toBe(false)
     expect(message).toEqual({ type: 'send', text: 'hello' })
+    db.close()
+  })
+
+  test('migration refreshes direct product-manager conversation prompts without overwriting customized members', () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'agent-company-schema-v23-direct-product-chat-'))
+    tempDirs.push(dataDir)
+
+    const db = new Database(join(dataDir, 'runtime.sqlite'))
+    initializeRuntimeDatabase(db)
+    const legacyDescription = [
+      '你是产品经理，只在规划流程工作，负责把模糊想法变成可观察、可验收的产品规格。',
+      '开始前读取 $AGENT_COMPANY_HOME/vendor/skills/cc-hardness/agents/product-manager.md。',
+      '需求访谈读取并严格使用 $AGENT_COMPANY_HOME/vendor/skills/matt/grilling/SKILL.md：一次只问一个最高价值问题。',
+      '不得调用 CLI 内建 AskUserQuestion 或终端选择器；所有问题必须通过 team report 返回 Web 对话。',
+      '用户要求封板时读取 $AGENT_COMPANY_HOME/vendor/skills/matt/to-spec/SKILL.md，把对话综合为 docs/specs/ 下的规格文件。',
+      '规格必须覆盖用户、权限、实体、页面、主流程、异常、业务规则、非功能要求、明确不做和可观察验收标准。',
+      '不要写生产代码；不确定内容必须标成未决项，不能自行补成既定事实。',
+    ].join('\n')
+    db.prepare('DELETE FROM schema_version WHERE version = ?').run(23)
+    db.prepare("UPDATE role_templates SET description = ? WHERE id = 'product_manager'").run(
+      legacyDescription
+    )
+    db.prepare(
+      `INSERT INTO workspaces (id, name, path, created_at)
+       VALUES ('workspace-v23', '交通数据监控大屏', 'D:\\project\\workspace-v23', 1)`
+    ).run()
+    const insertWorker = db.prepare(
+      `INSERT INTO workers (id, workspace_id, name, description, role, created_at)
+       VALUES (?, 'workspace-v23', '产品经理', ?, 'custom', 1)`
+    )
+    insertWorker.run('legacy-product-manager', legacyDescription)
+    insertWorker.run('custom-product-manager', '用户自行编写的产品经理角色提示词')
+
+    initializeRuntimeDatabase(db)
+
+    const templateDescription = db
+      .prepare("SELECT description FROM role_templates WHERE id = 'product_manager'")
+      .pluck()
+      .get() as string
+    const workerDescriptions = db
+      .prepare("SELECT id, description FROM workers WHERE workspace_id = 'workspace-v23'")
+      .all() as Array<{ description: string; id: string }>
+    const descriptionById = Object.fromEntries(
+      workerDescriptions.map((worker) => [worker.id, worker.description])
+    )
+    expect(templateDescription).toContain('原样以“产品经理”身份直接显示给用户')
+    expect(descriptionById['legacy-product-manager']).toContain(
+      '原样以“产品经理”身份直接显示给用户'
+    )
+    expect(descriptionById['custom-product-manager']).toBe('用户自行编写的产品经理角色提示词')
+    expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(23)).toEqual({
+      version: 23,
+    })
     db.close()
   })
 })

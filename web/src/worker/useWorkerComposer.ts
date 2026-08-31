@@ -68,7 +68,7 @@ const fallbackRoleDescriptions: Record<UiLanguage, Record<WorkerRole, string>> =
       '- Done means: what results, risks, and blockers to report.',
     ].join('\n'),
     reviewer: [
-      'You are a Reviewer. Focus on quality review; do not replace the Orchestrator or edit by default.',
+      'You are a Reviewer. Focus on quality review; do not replace the Department Manager or edit by default.',
       'Working style:',
       '- Prioritize real bugs, regressions, edge cases, and test gaps.',
       '- For each issue, include severity, file/line, trigger condition, and minimal fix.',
@@ -102,7 +102,7 @@ const fallbackRoleDescriptions: Record<UiLanguage, Record<WorkerRole, string>> =
       '- 完成标准：交付时需要说明哪些结果、风险和阻塞。',
     ].join('\n'),
     reviewer: [
-      '你是监工型 Reviewer，负责质量审查，不替代 Orchestrator，也不默认改代码。',
+      '你是监工型 Reviewer，负责质量审查，不替代部门经理，也不默认改代码。',
       '工作方式：',
       '- 优先找真实 bug、回归风险、边界条件和测试缺口。',
       '- 发现问题时给出严重度、文件/行号、触发条件和最小修复建议。',

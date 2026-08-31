@@ -1,3 +1,4 @@
+import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 import type { AgentStatus, AgentSummary, WorkerRole } from '../shared/types.js'
 import { getDefaultRoleDescription } from './role-templates.js'
 
@@ -28,7 +29,7 @@ export const getOrchestratorId = (workspaceId: string) => `${workspaceId}:orches
 export const createOrchestrator = (workspaceId: string): AgentSummary => ({
   id: getOrchestratorId(workspaceId),
   workspaceId,
-  name: 'Orchestrator',
+  name: DEPARTMENT_MANAGER_NAME,
   description: getDefaultRoleDescription('orchestrator'),
   role: 'orchestrator',
   status: 'stopped',

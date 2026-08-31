@@ -66,7 +66,7 @@ describe('agent command resolver', () => {
     )
 
     expect(resolved).toEqual({
-      args: ['/d', '/s', '/c', `"${commandPath}" "--flag" "value with spaces"`],
+      args: ['/d', '/c', 'call', commandPath, '--flag', 'value with spaces'],
       command: 'C:\\Windows\\System32\\cmd.exe',
     })
   })
