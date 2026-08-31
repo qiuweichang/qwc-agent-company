@@ -161,6 +161,7 @@ export const MemberContextDrawer = ({
               <div
                 className="ac-live-terminal-slot"
                 id={`worker-pty-${runId}`}
+                role="log"
                 aria-label={`${member.name} 的实时 CLI 输出`}
               />
             </section>

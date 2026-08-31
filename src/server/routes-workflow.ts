@@ -20,9 +20,7 @@ const INTERNAL_DEMO_ARTIFACT_PATHS = new Set([
 
 /** Removes only the retired built-in demo while preserving all workspace-reported artifacts. */
 const withoutInternalDemoArtifacts = (artifacts: string[]) =>
-  artifacts.filter(
-    (artifact) => !INTERNAL_DEMO_ARTIFACT_PATHS.has(artifact.replaceAll('\\', '/'))
-  )
+  artifacts.filter((artifact) => !INTERNAL_DEMO_ARTIFACT_PATHS.has(artifact.replaceAll('\\', '/')))
 
 const serializeState = (state: ProjectWorkflowState) => ({
   active_thread: state.activeThread,

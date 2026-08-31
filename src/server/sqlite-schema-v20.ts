@@ -1,8 +1,5 @@
 import type { Database } from 'better-sqlite3'
-import {
-  DEPARTMENT_MANAGER_NAME,
-  PRODUCT_MANAGER_NAME,
-} from '../shared/agent-company-labels.js'
+import { DEPARTMENT_MANAGER_NAME, PRODUCT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 
 import {
   ARCHITECT_ROLE_DESCRIPTION,

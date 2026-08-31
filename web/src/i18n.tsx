@@ -82,7 +82,8 @@ const enMessages = {
   'firstRun.skip': 'Skip',
   'firstRun.skipForNow': 'Skip for now',
   'firstRun.step': 'Step {current} of {total}',
-  'firstRun.subtitle': 'Each Workspace runs a Department Manager that dispatches tasks to team members.',
+  'firstRun.subtitle':
+    'Each Workspace runs a Department Manager that dispatches tasks to team members.',
   'firstRun.title': 'Welcome to Hive',
   'firstRun.tryDemo': 'Try Demo',
   'language.aria': 'Switch language',
@@ -322,7 +323,8 @@ const enMessages = {
   'workspace.browse.title': 'Browse server filesystem',
   'workspace.browse.up': 'up',
   'workspace.confirm.create': 'Create Workspace',
-  'workspace.confirm.description': 'Hive will load .hive/tasks.md and start the Department Manager here.',
+  'workspace.confirm.description':
+    'Hive will load .hive/tasks.md and start the Department Manager here.',
   'workspace.confirm.title': 'Add Workspace',
   'workspace.error.createFailed': 'Failed to create workspace',
   'workspace.error.createTitle': 'Could not create workspace',
@@ -575,8 +577,7 @@ const zhMessages: Record<TranslationKey, string> = {
   'worker.deleteMember': '删除成员',
   'worker.detail': '{name} 详情',
   'worker.emptyAdd': '添加第一个成员',
-  'worker.emptyDesc':
-    '添加团队成员（Claude Code、Codex、Gemini、OpenCode），部门经理会分派任务。',
+  'worker.emptyDesc': '添加团队成员（Claude Code、Codex、Gemini、OpenCode），部门经理会分派任务。',
   'worker.emptyTitle': '还没有团队成员',
   'worker.open': '打开 {name}',
   'worker.pendingResume': '重启后会继续 {count} 个排队任务。',

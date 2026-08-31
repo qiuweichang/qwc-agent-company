@@ -1,5 +1,5 @@
-import type { AgentSummary } from '../shared/types.js'
 import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
+import type { AgentSummary } from '../shared/types.js'
 import { ForbiddenError, UnauthorizedError } from './http-errors.js'
 
 export type TeamCommand = 'send' | 'list' | 'report' | 'status' | 'cancel' | 'help'

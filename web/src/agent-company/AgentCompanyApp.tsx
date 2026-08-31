@@ -18,8 +18,8 @@ import {
 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { MemberPlan, MemberPlanItem } from '../../../src/shared/project-operations.js'
 import { DEPARTMENT_MANAGER_NAME } from '../../../src/shared/agent-company-labels.js'
+import type { MemberPlan, MemberPlanItem } from '../../../src/shared/project-operations.js'
 import type { TeamListItem, WorkspaceSummary } from '../../../src/shared/types.js'
 import type {
   ConversationEntry,
@@ -32,9 +32,9 @@ import {
   createRoleTemplate,
   createWorker,
   createWorkspace,
-  deleteWorkspace,
   deleteRoleTemplate,
   deleteWorker,
+  deleteWorkspace,
   getActiveWorkspaceId,
   getProjectWorkflow,
   getStitchStatus,
@@ -55,11 +55,11 @@ import {
   transitionProjectWorkflow,
   updateRoleTemplate,
 } from '../api.js'
-import { ArtifactFrame } from './ArtifactFrame.js'
 import { WorkspaceTerminalPanels } from '../WorkspaceTerminalPanels.js'
+import { ArtifactFrame } from './ArtifactFrame.js'
 import { CliAvatar } from './CliAvatar.js'
-import { DeploymentDialog } from './DeploymentDialog.js'
 import { DeleteProjectDialog } from './DeleteProjectDialog.js'
+import { DeploymentDialog } from './DeploymentDialog.js'
 import { type ContextMember, MemberContextDrawer } from './MemberContextDrawer.js'
 import { MessageJumpRail } from './MessageJumpRail.js'
 import { ProjectArchivePanel } from './ProjectArchivePanel.js'
@@ -317,7 +317,8 @@ export const AgentCompanyApp = () => {
     const target = deletingWorkspace
     const remaining = (workspaces ?? []).filter((workspace) => workspace.id !== target.id)
     const deletedIndex = (workspaces ?? []).findIndex((workspace) => workspace.id === target.id)
-    const nextWorkspace = remaining[Math.min(Math.max(deletedIndex, 0), remaining.length - 1)] ?? null
+    const nextWorkspace =
+      remaining[Math.min(Math.max(deletedIndex, 0), remaining.length - 1)] ?? null
     setBusy(true)
     try {
       await deleteWorkspace(target.id)
@@ -555,7 +556,8 @@ export const AgentCompanyApp = () => {
           name: DEPARTMENT_MANAGER_NAME,
           roleLabel: '流程编排',
           status:
-            orchestratorRunning && (entries.length > 0 || memberPlans.some((plan) => plan.items.length))
+            orchestratorRunning &&
+            (entries.length > 0 || memberPlans.some((plan) => plan.items.length))
               ? 'working'
               : 'idle',
         },
@@ -594,7 +596,9 @@ export const AgentCompanyApp = () => {
     [memberPlans]
   )
   const executionBlocked =
-    thread === 'execution' && workflow !== null && ['requirements', 'solution'].includes(workflow.stage)
+    thread === 'execution' &&
+    workflow !== null &&
+    ['requirements', 'solution'].includes(workflow.stage)
 
   if (workspaces === null) {
     return (
@@ -763,40 +767,42 @@ export const AgentCompanyApp = () => {
                       <p>{buildProjectKickoff(activeWorkspace.name)}</p>
                     </div>
                   ) : null}
-                  {!executionBlocked ? entries.map((entry) => (
-                    <article
-                      className={`ac-message ac-message--${actorTone(entry)} ${entry.type === 'dispatch' ? 'ac-message--dispatch' : ''}`}
-                      key={entry.id}
-                      ref={(node) => {
-                        if (node) messageRefs.current.set(entry.id, node)
-                        else messageRefs.current.delete(entry.id)
-                      }}
-                    >
-                      <div className="ac-message__meta">
-                        <span className={`ac-avatar ac-avatar--${actorTone(entry)}`}>
-                          {entry.actorName.slice(0, 1)}
-                        </span>
-                        <div>
-                          <strong>{entry.actorName}</strong>
-                          <small>
-                            {entry.actorRole} · {formatTime(entry.createdAt)}
-                          </small>
-                        </div>
-                        {entry.status ? (
-                          <span className="ac-message__status">{entry.status}</span>
-                        ) : null}
-                      </div>
-                      <p>{entry.type === 'dispatch' ? summarizeDispatch(entry) : entry.text}</p>
-                      {entry.artifacts.map((artifact) => (
-                        <ArtifactFrame
-                          key={artifact}
-                          path={artifact}
-                          title={artifact.split(/[\\/]/).pop() ?? artifact}
-                          workspaceId={activeWorkspace.id}
-                        />
-                      ))}
-                    </article>
-                  )) : null}
+                  {!executionBlocked
+                    ? entries.map((entry) => (
+                        <article
+                          className={`ac-message ac-message--${actorTone(entry)} ${entry.type === 'dispatch' ? 'ac-message--dispatch' : ''}`}
+                          key={entry.id}
+                          ref={(node) => {
+                            if (node) messageRefs.current.set(entry.id, node)
+                            else messageRefs.current.delete(entry.id)
+                          }}
+                        >
+                          <div className="ac-message__meta">
+                            <span className={`ac-avatar ac-avatar--${actorTone(entry)}`}>
+                              {entry.actorName.slice(0, 1)}
+                            </span>
+                            <div>
+                              <strong>{entry.actorName}</strong>
+                              <small>
+                                {entry.actorRole} · {formatTime(entry.createdAt)}
+                              </small>
+                            </div>
+                            {entry.status ? (
+                              <span className="ac-message__status">{entry.status}</span>
+                            ) : null}
+                          </div>
+                          <p>{entry.type === 'dispatch' ? summarizeDispatch(entry) : entry.text}</p>
+                          {entry.artifacts.map((artifact) => (
+                            <ArtifactFrame
+                              key={artifact}
+                              path={artifact}
+                              title={artifact.split(/[\\/]/).pop() ?? artifact}
+                              workspaceId={activeWorkspace.id}
+                            />
+                          ))}
+                        </article>
+                      ))
+                    : null}
                   {!executionBlocked && processingMemberNames.length > 0 ? (
                     <div className="ac-processing-notice" role="status" aria-live="polite">
                       <span className="ac-processing-notice__pulse" aria-hidden="true" />
@@ -824,7 +830,10 @@ export const AgentCompanyApp = () => {
                 <footer className="ac-composer">
                   <div className="ac-composer__recipient">
                     <span>发送给</span>
-                    <select value={recipient} onChange={(event) => setRecipient(event.target.value)}>
+                    <select
+                      value={recipient}
+                      onChange={(event) => setRecipient(event.target.value)}
+                    >
                       {recipients.map((name) => (
                         <option key={name}>{name}</option>
                       ))}

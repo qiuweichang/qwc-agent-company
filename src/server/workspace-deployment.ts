@@ -217,6 +217,7 @@ $FrontendPort = [int](& $PortDetector -PreferredPort $FrontendPort -ExcludedPort
 
 $env:PORT = [string]$BackendPort
 $env:BACKEND_PORT = [string]$BackendPort
+$env:NO_BROWSER = '1'
 $env:FRONTEND_PORT = [string]$FrontendPort
 $env:VITE_API_BASE_URL = "http://127.0.0.1:$BackendPort"
 $env:NEXT_PUBLIC_API_BASE_URL = $env:VITE_API_BASE_URL
@@ -448,6 +449,9 @@ export const startWorkspaceDeployment = async (
     BACKEND_PORT: String(backendPort),
     FRONTEND_PORT: String(frontendPort),
     NEXT_PUBLIC_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
+    // Agent Company owns the user-facing deployment link. Suppress project-level
+    // auto-open hooks so a deployment never creates surprise browser windows.
+    NO_BROWSER: '1',
     PORT: String(backendPort),
     REACT_APP_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
     VITE_API_BASE_URL: `http://127.0.0.1:${backendPort}`,

@@ -1,5 +1,5 @@
-import type { WorkflowThread } from '../shared/workflow-types.js'
 import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
+import type { WorkflowThread } from '../shared/workflow-types.js'
 import type { AgentRuntime } from './agent-runtime.js'
 import type { DispatchRecord } from './dispatch-ledger-store.js'
 import { ConflictError } from './http-errors.js'

@@ -15,14 +15,6 @@ import type { PtyOutputBus } from './pty-output-bus.js'
 import { createSystemWorkflowMessage } from './runtime-message-builders.js'
 import { createRuntimeStoreLifecycle, createRuntimeStoreServices } from './runtime-store-helpers.js'
 import type { SettingsStore } from './settings-store.js'
-import {
-  deleteWorkspaceDeployment,
-  stopWorkspaceDeployment,
-} from './workspace-deployment.js'
-import {
-  assertWorkspaceProjectDeletionSafe,
-  deleteWorkspaceProjectFiles,
-} from './workspace-project-cleanup.js'
 import type {
   CancelTaskInput,
   DispatchTaskInput,
@@ -31,6 +23,11 @@ import type {
   StatusTaskInput,
 } from './team-operations.js'
 import type { TerminalRunSummary } from './terminal-input-profile.js'
+import { deleteWorkspaceDeployment, stopWorkspaceDeployment } from './workspace-deployment.js'
+import {
+  assertWorkspaceProjectDeletionSafe,
+  deleteWorkspaceProjectFiles,
+} from './workspace-project-cleanup.js'
 import type { WorkerInput, WorkspaceRecord } from './workspace-store.js'
 
 interface RuntimeStore {

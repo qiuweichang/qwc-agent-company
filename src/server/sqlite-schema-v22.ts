@@ -9,6 +9,14 @@ import { ORCHESTRATOR_ROLE_DESCRIPTION } from './role-templates.js'
  * `orchestrator` id and role type remain unchanged for record compatibility.
  */
 export const applySchemaVersion22 = (db: Database) => {
+  // Some historical fixture databases recorded schema versions without carrying every
+  // optional settings table. Treat that partial state as recoverable so unrelated
+  // launch-config and dispatch migrations can still complete.
+  const hasRoleTemplates = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'role_templates'")
+    .get()
+  if (!hasRoleTemplates) return
+
   db.prepare(
     `UPDATE role_templates
      SET name = ?, description = ?, updated_at = ?

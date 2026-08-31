@@ -599,7 +599,7 @@ describe('schema version', () => {
     expect(byId.frontend_engineer).toContain('前端工程师')
     expect(byId.backend_engineer).toContain('后端工程师')
     expect(byId.test_engineer).toContain('浏览器点击')
-    expect(byId.orchestrator).toContain('规划线程')
+    expect(byId.orchestrator).toContain('规划流程')
     expect(byId.orchestrator).toContain('.hive/tasks.md')
     expect(rows.find((row) => row.id === 'orchestrator')?.name).toBe('部门经理')
     expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(12)).toEqual({

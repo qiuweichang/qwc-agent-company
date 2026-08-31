@@ -12,11 +12,7 @@ interface ProjectDialogProps {
 const DEFAULT_WORKSPACE_ROOT = 'D:\\project\\agent-company-workspace'
 
 /** Extracts the last directory segment from either a Windows or POSIX path. */
-const getDirectoryDisplayName = (path: string) =>
-  path
-    .split(/[\\/]/)
-    .filter(Boolean)
-    .pop() ?? ''
+const getDirectoryDisplayName = (path: string) => path.split(/[\\/]/).filter(Boolean).pop() ?? ''
 
 /** Converts a display name into a legal Windows directory segment while preserving Chinese text. */
 const toProjectDirectoryName = (name: string) =>

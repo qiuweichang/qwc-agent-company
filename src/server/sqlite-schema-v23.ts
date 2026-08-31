@@ -28,13 +28,21 @@ const LEGACY_PRODUCT_MANAGER_ROLE_DESCRIPTION = [
  */
 export const applySchemaVersion23 = (db: Database) => {
   const now = Date.now()
-  const updateTemplate = db.prepare(
-    `UPDATE role_templates
-     SET description = ?, updated_at = ?
-     WHERE id = ? AND is_builtin = 1`
-  )
-  updateTemplate.run(ORCHESTRATOR_ROLE_DESCRIPTION, now, 'orchestrator')
-  updateTemplate.run(PRODUCT_MANAGER_ROLE_DESCRIPTION, now, 'product_manager')
+  // Legacy and partially repaired databases can legitimately lack role_templates even
+  // though their schema-version ledger is ahead. Keep worker prompt repair independent
+  // from the optional template table so startup remains forward-compatible.
+  const hasRoleTemplates = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'role_templates'")
+    .get()
+  if (hasRoleTemplates) {
+    const updateTemplate = db.prepare(
+      `UPDATE role_templates
+       SET description = ?, updated_at = ?
+       WHERE id = ? AND is_builtin = 1`
+    )
+    updateTemplate.run(ORCHESTRATOR_ROLE_DESCRIPTION, now, 'orchestrator')
+    updateTemplate.run(PRODUCT_MANAGER_ROLE_DESCRIPTION, now, 'product_manager')
+  }
 
   db.prepare(
     `UPDATE workers

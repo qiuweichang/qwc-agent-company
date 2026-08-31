@@ -10,7 +10,12 @@ const extractDispatchPlan = (text: string) => {
   const explicitItems = text
     .split(/\r?\n/)
     .filter((line) => PLAN_LINE_PREFIX.test(line))
-    .map((line) => line.replace(PLAN_LINE_PREFIX, '').replace(/[*_`#]/g, '').trim())
+    .map((line) =>
+      line
+        .replace(PLAN_LINE_PREFIX, '')
+        .replace(/[*_`#]/g, '')
+        .trim()
+    )
     .filter((line) => line.length >= 2 && line.length <= 48)
     .slice(0, 6)
   if (explicitItems.length > 0) return explicitItems

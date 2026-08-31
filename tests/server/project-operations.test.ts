@@ -69,8 +69,7 @@ describe('project operation routes', () => {
           expect.objectContaining({
             agentId: backend.id,
             items: expect.arrayContaining([
-              expect.objectContaining({ label: '接口设计', status: 'active' }),
-              expect.objectContaining({ label: '数据库设计', status: 'pending' }),
+              expect.objectContaining({ label: '实现学生接口', status: 'active' }),
             ]),
           }),
         ])
@@ -148,6 +147,7 @@ describe('project operation routes', () => {
     expect(detector).toContain('TcpListener')
     expect(deploy).toContain('FrontendPort')
     expect(deploy).toContain('BackendPort')
+    expect(deploy).toContain("$env:NO_BROWSER = '1'")
     expect(deploy).toContain('-WindowStyle Hidden')
     expect(vite).toContain("proxy: { '/api'")
     expect(vite).toContain('process.env.BACKEND_PORT')

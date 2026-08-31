@@ -1,14 +1,14 @@
-import type { IncomingMessage } from 'node:http'
 import { mkdirSync } from 'node:fs'
-import { workflowThreads } from '../shared/workflow-types.js'
+import type { IncomingMessage } from 'node:http'
 import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
+import { workflowThreads } from '../shared/workflow-types.js'
 import {
   resolveCommandPresetLaunchConfig,
   resolveStartupCommandLaunchConfig,
 } from './agent-launch-resolver.js'
+import { ConflictError } from './http-errors.js'
 import { autostartAgent, autostartOrchestrator } from './orchestrator-autostart.js'
 import { seedOrchestratorLaunchConfig } from './orchestrator-launch.js'
-import { ConflictError } from './http-errors.js'
 import { getRequiredParam, readJsonBody, route, sendJson } from './route-helpers.js'
 import type {
   CreateWorkerBody,

@@ -112,22 +112,22 @@ export const ProjectArchivePanel = ({ workspaceId }: { workspaceId: string }) =>
             {activeCategory === category ? (
               <div className="ac-archive-group__files">
                 {categoryFiles.map((file) => (
-                <article className="ac-archive-file" key={file.path}>
-                  <File size={14} />
-                  <div>
-                    <strong>{file.path.split('/').at(-1)}</strong>
-                    <small>{file.path}</small>
-                  </div>
-                  <span>{formatSize(file.size)}</span>
-                  <button
-                    type="button"
-                    onClick={() => void openLocation(file.path)}
-                    aria-label={`在资源管理器中打开 ${file.path}`}
-                    title="跳转到资源管理器"
-                  >
-                    <FolderOpen size={15} />
-                  </button>
-                </article>
+                  <article className="ac-archive-file" key={file.path}>
+                    <File size={14} />
+                    <div>
+                      <strong>{file.path.split('/').at(-1)}</strong>
+                      <small>{file.path}</small>
+                    </div>
+                    <span>{formatSize(file.size)}</span>
+                    <button
+                      type="button"
+                      onClick={() => void openLocation(file.path)}
+                      aria-label={`在资源管理器中打开 ${file.path}`}
+                      title="跳转到资源管理器"
+                    >
+                      <FolderOpen size={15} />
+                    </button>
+                  </article>
                 ))}
               </div>
             ) : null}

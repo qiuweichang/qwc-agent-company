@@ -48,7 +48,9 @@ describe('OrchestratorPane three-state UI', () => {
     const { onStop, onStart, onRestart } = renderPane({ kind: 'stopped' })
 
     expect(screen.getByTestId('orchestrator-stopped-body')).toBeInTheDocument()
-    expect(screen.getByTestId('empty-state-title')).toHaveTextContent('Department Manager is stopped')
+    expect(screen.getByTestId('empty-state-title')).toHaveTextContent(
+      'Department Manager is stopped'
+    )
     const start = screen.getByTestId('orchestrator-start')
     expect(start).toHaveTextContent('Start Department Manager')
 
