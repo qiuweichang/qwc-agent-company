@@ -51,8 +51,26 @@ interface AgentManager {
 
 const createRunId = () => randomUUID()
 
-const createSpawnEnv = (inputEnv?: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
-  const env = { ...process.env, ...inputEnv }
+/**
+ * Builds a PTY environment while honoring Windows' case-insensitive variable names.
+ * Node commonly exposes the inherited path as `Path`, while the agent bootstrap
+ * intentionally supplies `PATH`. Passing both keys to ConPTY is ambiguous and can
+ * make PowerShell select the stale value, leaving `node` unavailable to team.cmd.
+ */
+export const createSpawnEnv = (
+  inputEnv?: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform = process.platform
+): NodeJS.ProcessEnv => {
+  const env = { ...process.env }
+  for (const [key, value] of Object.entries(inputEnv ?? {})) {
+    if (platform === 'win32') {
+      const duplicateKey = Object.keys(env).find(
+        (existingKey) => existingKey !== key && existingKey.toLowerCase() === key.toLowerCase()
+      )
+      if (duplicateKey) delete env[duplicateKey]
+    }
+    env[key] = value
+  }
   for (const key of Object.keys(env)) {
     if (env[key] === undefined) delete env[key]
   }
