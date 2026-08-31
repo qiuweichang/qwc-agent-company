@@ -308,6 +308,12 @@ button {
 .ac-artifact--image { padding: 10px; }
 .ac-artifact--image img { display: block; width: 100%; max-height: 520px; object-fit: contain; }
 .ac-artifact--image figcaption { padding: 8px 2px 0; color: var(--ac-muted); font-size: 10px; }
+.ac-artifact-file { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 11px; border: 1px solid var(--ac-border); border-radius: 9px; padding: 12px 14px; color: var(--ac-ink); background: #fff; text-decoration: none; transition: border-color 160ms ease, box-shadow 160ms ease; }
+.ac-artifact-file:hover { border-color: #abc4f7; box-shadow: 0 5px 16px rgba(31, 46, 66, .08); }
+.ac-artifact-file__icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; color: var(--ac-blue); background: #edf4ff; }
+.ac-artifact-file__copy { display: grid; min-width: 0; gap: 3px; }
+.ac-artifact-file__copy strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.ac-artifact-file__copy small { color: var(--ac-muted); font-size: 9px; }
 
 .ac-icon-button {
   display: inline-grid;

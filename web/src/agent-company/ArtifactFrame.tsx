@@ -1,4 +1,4 @@
-import { ExternalLink, Maximize2, Minus, Plus, RotateCcw } from 'lucide-react'
+import { ExternalLink, FileText, Maximize2, Minus, Plus, RotateCcw } from 'lucide-react'
 import { useState } from 'react'
 
 import { getWorkspaceArtifactUrl } from '../api.js'
@@ -10,6 +10,13 @@ interface ArtifactFrameProps {
 }
 
 const isImageArtifact = (path: string) => /\.(?:png|jpe?g|webp|svg)$/i.test(path)
+
+/**
+ * Identifies artifacts that can safely use the interactive diagram iframe.
+ * Text documents remain first-class deliverables, but rendering them as HTML
+ * produces a blank frame and incorrectly exposes Archify zoom controls.
+ */
+const isHtmlArtifact = (path: string) => /\.html?$/i.test(path)
 
 /**
  * Renders an agent-reported visual artifact. HTML diagrams stay sandboxed in an
@@ -28,6 +35,27 @@ export const ArtifactFrame = ({ path, title, workspaceId }: ArtifactFrameProps) 
         <img alt={title} src={source} />
         <figcaption>{title}</figcaption>
       </figure>
+    )
+  }
+
+  if (!isHtmlArtifact(path)) {
+    return (
+      <a
+        className="ac-artifact-file"
+        href={standaloneSource}
+        rel="noopener noreferrer"
+        target="_blank"
+        title={`打开 ${title}`}
+      >
+        <span className="ac-artifact-file__icon" aria-hidden="true">
+          <FileText size={18} />
+        </span>
+        <span className="ac-artifact-file__copy">
+          <strong>{title}</strong>
+          <small>说明文档 · 点击在新窗口查看</small>
+        </span>
+        <ExternalLink size={15} aria-hidden="true" />
+      </a>
     )
   }
 
