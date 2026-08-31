@@ -8,6 +8,7 @@ import {
 } from './agent-launch-resolver.js'
 import { autostartAgent, autostartOrchestrator } from './orchestrator-autostart.js'
 import { seedOrchestratorLaunchConfig } from './orchestrator-launch.js'
+import { ConflictError } from './http-errors.js'
 import { getRequiredParam, readJsonBody, route, sendJson } from './route-helpers.js'
 import type {
   CreateWorkerBody,
@@ -292,6 +293,23 @@ export const workspaceRoutes: RouteDefinition[] = [
           : DEPARTMENT_MANAGER_NAME
       const threadLabel = thread === 'planning' ? '规划流程' : '执行流程'
       const workspace = store.getWorkspaceSnapshot(workspaceId).summary
+      if (recipient === DEPARTMENT_MANAGER_NAME) {
+        const orchestratorId = getOrchestratorId(workspaceId)
+        if (!store.getActiveRunByAgentId(workspaceId, orchestratorId)) {
+          if (!store.peekAgentLaunchConfig(workspaceId, orchestratorId)) {
+            seedOrchestratorLaunchConfig(store, store.settings, workspaceId)
+          }
+          const start = await autostartOrchestrator(
+            store,
+            workspaceId,
+            orchestratorId,
+            getRuntimePort(request)
+          )
+          if (!start.ok) {
+            throw new ConflictError(`部门经理启动失败：${start.error ?? '未知错误'}`)
+          }
+        }
+      }
       const directWorkerInstructions = recipient.includes('产品')
         ? [
             `[${threadLabel} · 用户直接回复产品经理]`,
