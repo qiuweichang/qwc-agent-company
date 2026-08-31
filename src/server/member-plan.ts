@@ -34,8 +34,10 @@ export const buildMemberPlan = (
   workflow: ProjectWorkflowState
 ): MemberPlan => {
   const ownDispatches = dispatches.filter((dispatch) => dispatch.toAgentId === agent.id)
-  const sourceDispatches = agent.role === 'orchestrator' ? dispatches : ownDispatches
-  const latestDispatch = sourceDispatches.at(-1)
+  // A coordinator creates many dispatches but does not own those tasks. Reusing the
+  // global ledger for its card made the department manager display the worker's plan.
+  // Every card must therefore be derived only from work explicitly addressed to it.
+  const latestDispatch = ownDispatches.at(-1)
 
   // Plans represent work that was actually assigned for this project. A newly configured role has
   // no plan yet; showing a role template here would incorrectly imply that work was already scoped.
