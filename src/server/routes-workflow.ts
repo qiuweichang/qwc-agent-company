@@ -1,9 +1,11 @@
 import type { ProjectWorkflowState } from '../shared/workflow-types.js'
 import { workflowActions, workflowThreads } from '../shared/workflow-types.js'
-import { BadRequestError } from './http-errors.js'
+import { BadRequestError, ConflictError } from './http-errors.js'
+import { autostartOrchestrator } from './orchestrator-autostart.js'
 import { getRequiredParam, readJsonBody, route, sendJson } from './route-helpers.js'
 import type { RouteDefinition } from './route-types.js'
 import { requireUiTokenFromRequest } from './ui-auth-helpers.js'
+import { getOrchestratorId } from './workspace-store-support.js'
 
 /**
  * Legacy application-owned demo paths that must never appear as project output.
@@ -142,6 +144,19 @@ export const workflowRoutes: RouteDefinition[] = [
       const body = await readJsonBody<{ action?: string }>(request)
       if (!workflowActions.includes(body.action as (typeof workflowActions)[number])) {
         throw new BadRequestError('Unknown workflow action')
+      }
+      const orchestratorId = getOrchestratorId(workspaceId)
+      const launchConfig = store.peekAgentLaunchConfig(workspaceId, orchestratorId)
+      if (launchConfig && !store.getActiveRunByAgentId(workspaceId, orchestratorId)) {
+        const start = await autostartOrchestrator(
+          store,
+          workspaceId,
+          orchestratorId,
+          String(request.socket.localPort ?? '')
+        )
+        if (!start.ok) {
+          throw new ConflictError(`部门经理启动失败：${start.error ?? '未知错误'}`)
+        }
       }
       const state = store.transitionWorkflow(
         workspaceId,

@@ -106,7 +106,8 @@ export const createWorkflowStore = (db: Database) => {
         next.uiStatus = 'pending'
         next.activeThread = 'planning'
         thread = 'planning'
-        eventText = '需求已封板。部门经理可以把确认后的规格并行派给架构师和 UI 设计师。'
+        eventText =
+          '需求已封板。部门经理须立即读取确认后的规格，并行派发架构师和 UI 设计师产出可供用户确认的方案。'
         break
       case 'approve_architecture':
         if (!current.requirementsFrozen) throw new ConflictError('请先封板需求')
@@ -118,7 +119,7 @@ export const createWorkflowStore = (db: Database) => {
         if (!current.requirementsFrozen) throw new ConflictError('请先封板需求')
         next.architectureStatus = 'revision_requested'
         thread = 'planning'
-        eventText = '用户要求修改架构方案；架构确认门保持关闭。'
+        eventText = '用户要求修改架构方案；部门经理须立即把反馈重新派给架构师。'
         break
       case 'approve_ui':
         if (!current.requirementsFrozen) throw new ConflictError('请先封板需求')
@@ -130,7 +131,7 @@ export const createWorkflowStore = (db: Database) => {
         if (!current.requirementsFrozen) throw new ConflictError('请先封板需求')
         next.uiStatus = 'revision_requested'
         thread = 'planning'
-        eventText = '用户要求修改 UI 设计方案；UI 确认门保持关闭。'
+        eventText = '用户要求修改 UI 设计方案；部门经理须立即把反馈重新派给 UI 设计师。'
         break
       case 'start_development':
         if (current.architectureStatus !== 'approved' || current.uiStatus !== 'approved') {
@@ -139,14 +140,16 @@ export const createWorkflowStore = (db: Database) => {
         next.stage = 'development'
         next.activeThread = 'execution'
         thread = 'execution'
-        eventText = '方案已全部确认，执行流程已开启。部门经理可以开始派发前后端开发任务。'
+        eventText =
+          '方案已全部确认，执行流程已开启。部门经理须立即制定开发计划并并行派发前后端开发任务。'
         break
       case 'start_acceptance':
         if (current.stage !== 'development') throw new ConflictError('项目尚未处于开发阶段')
         next.stage = 'acceptance'
         next.activeThread = 'execution'
         thread = 'execution'
-        eventText = '开发完成，进入全流程验收。测试人员需要提交真实点击与功能测试证据。'
+        eventText =
+          '开发完成，进入全流程验收。部门经理须立即派发测试人员执行真实点击与功能测试并提交证据。'
         break
       case 'complete_project':
         if (current.stage !== 'acceptance') throw new ConflictError('只有验收阶段可以完成项目')
