@@ -741,13 +741,12 @@ button {
 .ac-team-list { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 .ac-team-card {
   display: grid;
-  min-height: 108px;
-  grid-template-columns: minmax(0, 1fr);
+  min-height: 136px;
+  grid-template-columns: minmax(70px, .78fr) minmax(0, 1.22fr);
   align-items: stretch;
   gap: 9px;
   padding: 11px;
 }
-.ac-team-card.has-plan { min-height: 136px; grid-template-columns: minmax(70px, .78fr) minmax(0, 1.22fr); }
 .ac-team-card__identity { display: flex; min-width: 0; flex-direction: column; align-items: flex-start; gap: 8px; }
 .ac-team-card__identity > div { min-width: 0; }
 .ac-team-card__identity strong { overflow: visible; white-space: normal; }

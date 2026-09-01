@@ -1096,7 +1096,7 @@ const TeamGroup = ({
           return (
             <button
               type="button"
-              className={`ac-team-card ${memberPlan.length > 0 ? 'has-plan' : ''}`}
+              className="ac-team-card"
               key={member.id}
               onClick={() => onSelect(member)}
             >
@@ -1124,7 +1124,9 @@ const TeamGroup = ({
                     </li>
                   ))}
                 </ol>
-              ) : null}
+              ) : (
+                <span className="ac-member-plan ac-member-plan--empty" aria-hidden="true" />
+              )}
             </button>
           )
         })}
