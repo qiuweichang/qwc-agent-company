@@ -62,6 +62,10 @@ import { DeleteProjectDialog } from './DeleteProjectDialog.js'
 import { DeploymentDialog } from './DeploymentDialog.js'
 import { type ContextMember, MemberContextDrawer } from './MemberContextDrawer.js'
 import { MessageJumpRail } from './MessageJumpRail.js'
+import {
+  parseProductChoicePrompt,
+  ProductChoicePanel,
+} from './ProductChoicePanel.js'
 import { ProjectArchivePanel } from './ProjectArchivePanel.js'
 import { ProjectDialog } from './ProjectDialog.js'
 import { RenameProjectDialog } from './RenameProjectDialog.js'
@@ -490,16 +494,23 @@ export const AgentCompanyApp = () => {
     }
   }
 
-  /** Sends the composer text into the visible thread and clears only after acceptance. */
-  const sendMessage = async () => {
-    if (!activeWorkspaceId || !draft.trim()) return
-    const text = draft.trim()
+  /**
+   * Persists one user response for the requested recipient and mirrors it locally
+   * so both composer replies and structured choices share identical semantics.
+   * Returns true only when Runtime accepts the message.
+   */
+  const submitProjectResponse = async (text: string, targetRecipient: string) => {
+    if (!activeWorkspaceId || !text.trim()) return false
+    const normalizedText = text.trim()
     const sentAt = Date.now()
-    setPendingRecipient({ name: recipient, since: sentAt })
+    setPendingRecipient({ name: targetRecipient, since: sentAt })
     setBusy(true)
     try {
-      await sendProjectMessage(activeWorkspaceId, { recipient, text, thread })
-      setDraft('')
+      await sendProjectMessage(activeWorkspaceId, {
+        recipient: targetRecipient,
+        text: normalizedText,
+        thread,
+      })
       setEntries((current) => [
         ...current,
         {
@@ -510,17 +521,31 @@ export const AgentCompanyApp = () => {
           createdAt: sentAt,
           id: -sentAt,
           status: null,
-          text,
+          text: normalizedText,
           thread,
           type: 'user_input',
         },
       ])
+      return true
     } catch (reason) {
       setPendingRecipient(null)
       setError(reason instanceof Error ? reason.message : String(reason))
+      return false
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Sends the free-form composer text and clears it only after Runtime acceptance. */
+  const sendMessage = async () => {
+    const accepted = await submitProjectResponse(draft, recipient)
+    if (accepted) setDraft('')
+  }
+
+  /** Sends a structured decision directly to the product manager without using the composer. */
+  const submitProductChoice = async (response: string) => {
+    setRecipient('产品经理')
+    await submitProjectResponse(response, '产品经理')
   }
 
   /** Applies a server-validated gate transition and switches to its canonical thread. */
@@ -599,6 +624,15 @@ export const AgentCompanyApp = () => {
     thread === 'execution' &&
     workflow !== null &&
     ['requirements', 'solution'].includes(workflow.stage)
+  /** Keeps only the latest unanswered product choice interactive; historical decisions stay read-only. */
+  const latestProductChoiceEntryId = useMemo(() => {
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index]
+      if (entry.type === 'user_input') return null
+      if (entry.actorName.includes('产品') && parseProductChoicePrompt(entry.text)) return entry.id
+    }
+    return null
+  }, [entries])
 
   if (workspaces === null) {
     return (
@@ -768,40 +802,57 @@ export const AgentCompanyApp = () => {
                     </div>
                   ) : null}
                   {!executionBlocked
-                    ? entries.map((entry) => (
-                        <article
-                          className={`ac-message ac-message--${actorTone(entry)} ${entry.type === 'dispatch' ? 'ac-message--dispatch' : ''}`}
-                          key={entry.id}
-                          ref={(node) => {
-                            if (node) messageRefs.current.set(entry.id, node)
-                            else messageRefs.current.delete(entry.id)
-                          }}
-                        >
-                          <div className="ac-message__meta">
-                            <span className={`ac-avatar ac-avatar--${actorTone(entry)}`}>
-                              {entry.actorName.slice(0, 1)}
-                            </span>
-                            <div>
-                              <strong>{entry.actorName}</strong>
-                              <small>
-                                {entry.actorRole} · {formatTime(entry.createdAt)}
-                              </small>
+                    ? entries.map((entry) => {
+                        const choicePrompt =
+                          entry.id === latestProductChoiceEntryId
+                            ? parseProductChoicePrompt(entry.text)
+                            : null
+                        return (
+                          <article
+                            className={`ac-message ac-message--${actorTone(entry)} ${entry.type === 'dispatch' ? 'ac-message--dispatch' : ''}`}
+                            key={entry.id}
+                            ref={(node) => {
+                              if (node) messageRefs.current.set(entry.id, node)
+                              else messageRefs.current.delete(entry.id)
+                            }}
+                          >
+                            <div className="ac-message__meta">
+                              <span className={`ac-avatar ac-avatar--${actorTone(entry)}`}>
+                                {entry.actorName.slice(0, 1)}
+                              </span>
+                              <div>
+                                <strong>{entry.actorName}</strong>
+                                <small>
+                                  {entry.actorRole} · {formatTime(entry.createdAt)}
+                                </small>
+                              </div>
+                              {entry.status ? (
+                                <span className="ac-message__status">{entry.status}</span>
+                              ) : null}
                             </div>
-                            {entry.status ? (
-                              <span className="ac-message__status">{entry.status}</span>
+                            <p>
+                              {entry.type === 'dispatch'
+                                ? summarizeDispatch(entry)
+                                : (choicePrompt?.displayText ?? entry.text)}
+                            </p>
+                            {choicePrompt ? (
+                              <ProductChoicePanel
+                                busy={busy}
+                                onSubmit={submitProductChoice}
+                                prompt={choicePrompt}
+                              />
                             ) : null}
-                          </div>
-                          <p>{entry.type === 'dispatch' ? summarizeDispatch(entry) : entry.text}</p>
-                          {entry.artifacts.map((artifact) => (
-                            <ArtifactFrame
-                              key={artifact}
-                              path={artifact}
-                              title={artifact.split(/[\\/]/).pop() ?? artifact}
-                              workspaceId={activeWorkspace.id}
-                            />
-                          ))}
-                        </article>
-                      ))
+                            {entry.artifacts.map((artifact) => (
+                              <ArtifactFrame
+                                key={artifact}
+                                path={artifact}
+                                title={artifact.split(/[\\/]/).pop() ?? artifact}
+                                workspaceId={activeWorkspace.id}
+                              />
+                            ))}
+                          </article>
+                        )
+                      })
                     : null}
                   {!executionBlocked && processingMemberNames.length > 0 ? (
                     <div className="ac-processing-notice" role="status" aria-live="polite">
