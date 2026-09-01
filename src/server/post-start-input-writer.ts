@@ -19,6 +19,22 @@ const CLAUDE_BYPASS_MARKER = 'Yes,Iaccept'
 const ANSI_CSI_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[a-zA-Z]`, 'g')
 const ANSI_OSC_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\][^\\u0007]*\\u0007`, 'g')
 
+interface PendingInteractiveInput {
+  /** CLI command whose prompt and paste semantics control this queue. */
+  command: string
+  /** Prompts collected before the CLI reaches its first writable prompt. */
+  pendingTexts: string[]
+  /** Prevents concurrent readiness loops from writing into the same TUI prompt. */
+  scheduled: boolean
+}
+
+/**
+ * Per-manager input queues merge startup guidance and the first worker dispatch.
+ * Both messages are normally scheduled within the same event-loop turn; without
+ * this queue two independent writers can paste over each other in Codex's TUI.
+ */
+const pendingInteractiveInputs = new WeakMap<AgentManager, Map<string, PendingInteractiveInput>>()
+
 /** Removes terminal cursor/style controls while preserving the user-visible prompt text. */
 const stripTerminalControls = (output: string) =>
   output.replace(ANSI_OSC_PATTERN, '').replace(ANSI_CSI_PATTERN, '')
@@ -118,7 +134,8 @@ const submitPastedInteractiveInput = (
   runId: string,
   text: string,
   baselineLength: number,
-  waitForPasteAck: boolean
+  waitForPasteAck: boolean,
+  onSubmitted: () => void
 ) => {
   const pastedAt = Date.now()
   const minDelay = getSubmitAfterPasteDelayMs(text)
@@ -138,6 +155,8 @@ const submitPastedInteractiveInput = (
       writeIfRunWritable(agentManager, runId, '\r')
     } catch {
       // The PTY may have exited between paste and submit.
+    } finally {
+      onSubmitted()
     }
   }
 
@@ -149,6 +168,7 @@ const submitPastedInteractiveInput = (
 
     const output = getWritableOutput()
     if (output === null) {
+      onSubmitted()
       return
     }
     if (acknowledgedAt === null && hasBracketedPasteAcknowledgement(output, baselineLength)) {
@@ -179,6 +199,20 @@ export const createPostStartInputWriter = (
   }
 
   return (runId, text) => {
+    let managerQueues = pendingInteractiveInputs.get(agentManager)
+    if (!managerQueues) {
+      managerQueues = new Map()
+      pendingInteractiveInputs.set(agentManager, managerQueues)
+    }
+    let pendingInput = managerQueues.get(runId)
+    if (!pendingInput) {
+      pendingInput = { command, pendingTexts: [], scheduled: false }
+      managerQueues.set(runId, pendingInput)
+    }
+    pendingInput.pendingTexts.push(text)
+    if (pendingInput.scheduled) return
+    pendingInput.scheduled = true
+
     const startedAt = Date.now()
     let isInitialAttempt = true
     const tryWrite = () => {
@@ -187,15 +221,23 @@ export const createPostStartInputWriter = (
         const run = agentManager.getRun(runId)
         output = isWritableRunStatus(run.status) ? run.output : null
       } catch {
+        managerQueues?.delete(runId)
         return
       }
-      if (output === null) return
+      if (output === null) {
+        managerQueues?.delete(runId)
+        return
+      }
       if (
-        hasInteractivePromptReady(output, command) ||
-        (canTimeoutBeforePromptReady(command) && Date.now() - startedAt >= READY_TIMEOUT_MS)
+        hasInteractivePromptReady(output, pendingInput.command) ||
+        (canTimeoutBeforePromptReady(pendingInput.command) &&
+          Date.now() - startedAt >= READY_TIMEOUT_MS)
       ) {
         const baselineLength = output.length
-        const input = usesBracketedPaste(command) ? toBracketedPasteSubmission(text) : text
+        const batchedText = pendingInput.pendingTexts.splice(0).join('\n\n')
+        const input = usesBracketedPaste(pendingInput.command)
+          ? toBracketedPasteSubmission(batchedText)
+          : batchedText
         try {
           if (!writeIfRunWritable(agentManager, runId, input)) return
         } catch (error) {
@@ -205,9 +247,20 @@ export const createPostStartInputWriter = (
         submitPastedInteractiveInput(
           agentManager,
           runId,
-          text,
+          batchedText,
           baselineLength,
-          isClaudeCommand(command)
+          isClaudeCommand(pendingInput.command),
+          () => {
+            pendingInput.scheduled = false
+            if (pendingInput.pendingTexts.length === 0) {
+              managerQueues?.delete(runId)
+              return
+            }
+            createPostStartInputWriter(agentManager, pendingInput.command)(
+              runId,
+              pendingInput.pendingTexts.splice(0).join('\n\n')
+            )
+          }
         )
         return
       }

@@ -98,6 +98,34 @@ describe('post-start input writer', () => {
     expect(manager.writeInput).toHaveBeenNthCalledWith(2, 'run-1', '\r')
   })
 
+  test('batches startup guidance and a worker dispatch before the first Codex prompt', () => {
+    vi.useFakeTimers()
+    let output = 'OpenAI Codex starting\n'
+    const manager = {
+      getRun: vi.fn(() => ({ output, status: 'running' })),
+      writeInput: vi.fn(),
+    }
+
+    const writeStartup = createPostStartInputWriter(manager as never, 'codex')
+    const writeDispatch = createPostStartInputWriter(manager as never, 'codex')
+    writeStartup('run-codex', 'startup guidance')
+    writeDispatch('run-codex', 'worker dispatch')
+
+    expect(manager.writeInput).not.toHaveBeenCalled()
+    output += '❯ '
+    vi.advanceTimersByTime(50)
+
+    expect(manager.writeInput).toHaveBeenCalledTimes(1)
+    expect(manager.writeInput).toHaveBeenNthCalledWith(
+      1,
+      'run-codex',
+      '\u001b[200~startup guidance\n\nworker dispatch\u001b[201~'
+    )
+
+    vi.advanceTimersByTime(600)
+    expect(manager.writeInput).toHaveBeenNthCalledWith(2, 'run-codex', '\r')
+  })
+
   test('waits for Gemini prompt readiness and writes plain input without bracketed paste', () => {
     vi.useFakeTimers()
     let output = 'Gemini CLI v0.35.3\nAuthenticated with gemini-api-key'
