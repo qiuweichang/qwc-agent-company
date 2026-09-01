@@ -70,4 +70,35 @@ describe('agent command resolver', () => {
       command: 'C:\\Windows\\System32\\cmd.exe',
     })
   })
+
+  test('launches the Codex npm shim with the Runtime Node executable on Windows', () => {
+    const root = mkdtempSync(join(tmpdir(), 'hive-codex-command-spawn-'))
+    tempDirs.push(root)
+    const binDir = join(root, 'bin')
+    const commandPath = join(binDir, 'codex.cmd')
+    const runtimeNode = join(root, 'runtime', 'node.exe')
+    const codexEntryPoint = join(binDir, 'node_modules', '@openai', 'codex', 'bin', 'codex.js')
+    mkdirSync(join(binDir, 'node_modules', '@openai', 'codex', 'bin'), { recursive: true })
+    mkdirSync(join(root, 'runtime'), { recursive: true })
+    writeFileSync(commandPath, '@echo off\r\n')
+    writeFileSync(runtimeNode, 'node placeholder')
+    writeFileSync(codexEntryPoint, 'codex placeholder')
+
+    const resolved = resolveSpawnCommand(
+      'codex',
+      root,
+      {
+        AGENT_COMPANY_NODE: runtimeNode,
+        Path: binDir,
+        PathExt: '.cmd;.EXE',
+      },
+      ['--flag', 'value with spaces'],
+      'win32'
+    )
+
+    expect(resolved).toEqual({
+      args: [codexEntryPoint, '--flag', 'value with spaces'],
+      command: runtimeNode,
+    })
+  })
 })

@@ -1,5 +1,5 @@
 import { accessSync, constants } from 'node:fs'
-import { delimiter, extname, isAbsolute, join } from 'node:path'
+import { basename, delimiter, dirname, extname, isAbsolute, join } from 'node:path'
 
 const hasPathSeparator = (command: string) => command.includes('/') || command.includes('\\')
 
@@ -84,6 +84,44 @@ const isWindowsBatchFile = (command: string) => {
   return extension === '.cmd' || extension === '.bat'
 }
 
+/**
+ * Resolves Codex's npm-generated Windows shim to its JavaScript entry point.
+ * The generated `codex.cmd` performs a second PATH lookup for `node`, which can
+ * fail inside ConPTY even after the parent process resolved the shim correctly.
+ * Launching the entry point with the Runtime's absolute Node executable removes
+ * that hidden dependency while preserving every Codex argument unchanged.
+ */
+const resolveWindowsCodexNodeShim = (
+  resolvedCommand: string,
+  env: NodeJS.ProcessEnv,
+  args: string[],
+  platform: NodeJS.Platform
+): ResolvedSpawnCommand | null => {
+  if (platform !== 'win32' || basename(resolvedCommand).toLowerCase() !== 'codex.cmd') return null
+
+  const runtimeNode = getEnvValue(env, 'AGENT_COMPANY_NODE', platform)
+  const codexEntryPoint = join(
+    dirname(resolvedCommand),
+    'node_modules',
+    '@openai',
+    'codex',
+    'bin',
+    'codex.js'
+  )
+  if (
+    !runtimeNode ||
+    !canExecute(runtimeNode, platform) ||
+    !canExecute(codexEntryPoint, platform)
+  ) {
+    return null
+  }
+
+  return {
+    args: [codexEntryPoint, ...args],
+    command: runtimeNode,
+  }
+}
+
 export const resolveSpawnCommand = (
   command: string,
   cwd: string,
@@ -92,6 +130,9 @@ export const resolveSpawnCommand = (
   platform = process.platform
 ): ResolvedSpawnCommand => {
   const resolvedCommand = resolveCommandPath(command, cwd, env, platform)
+  const codexNodeLaunch = resolveWindowsCodexNodeShim(resolvedCommand, env, args, platform)
+  if (codexNodeLaunch) return codexNodeLaunch
+
   if (platform === 'win32' && isWindowsBatchFile(resolvedCommand)) {
     return {
       // Keep the shim and its arguments as separate argv values. node-pty owns
