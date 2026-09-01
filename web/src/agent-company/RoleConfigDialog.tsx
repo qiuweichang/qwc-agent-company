@@ -115,7 +115,7 @@ export const RoleConfigDialog = ({
               >
                 <strong>{template.name}</strong>
                 <small>
-                  {template.isBuiltin ? '系统预设 · 职责只读' : '自定义角色'} ·{' '}
+                  {template.isBuiltin ? '系统预设 · 名称类型只读' : '自定义角色'} ·{' '}
                   {commandPresets.find((preset) => preset.command === template.defaultCommand)
                     ?.displayName ?? 'Claude Code (CC)'}
                 </small>
@@ -168,12 +168,14 @@ export const RoleConfigDialog = ({
                   </option>
                 ))}
               </select>
+              <small className="ac-field-hint">
+                仅用于之后新建项目的初始团队，不会修改任何已有项目成员。
+              </small>
             </label>
             <label className="ac-field ac-field--grow">
               <span>行为契约</span>
               <textarea
                 value={draft.description}
-                disabled={selected?.isBuiltin}
                 onChange={(event) =>
                   setDraft((current) => ({ ...current, description: event.target.value }))
                 }
@@ -182,7 +184,7 @@ export const RoleConfigDialog = ({
             </label>
             {selected?.isBuiltin ? (
               <p className="ac-settings-note">
-                系统预设的名称、类型和行为契约只读，但可以调整默认 CLI。
+                系统预设仅锁定名称和类型；职责内容与默认 CLI 均可随时修改。
               </p>
             ) : null}
             {error ? <p className="ac-form-error">{error}</p> : null}

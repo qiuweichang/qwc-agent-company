@@ -20,12 +20,6 @@ interface TeamDialogProps {
   roleTemplates: RoleTemplate[]
 }
 
-/** Resolves a role's executable preference back to the persisted command-preset id. */
-const resolveTemplatePresetId = (
-  commandPresets: CommandPreset[],
-  template: RoleTemplate | undefined
-) => commandPresets.find((preset) => preset.command === template?.defaultCommand)?.id ?? 'claude'
-
 /** Manages real worker membership and supports a reusable custom role contract. */
 export const TeamDialog = ({
   busy,
@@ -43,9 +37,8 @@ export const TeamDialog = ({
   const [templateId, setTemplateId] = useState(usableTemplates[0]?.id ?? '__custom')
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [presetId, setPresetId] = useState(() =>
-    resolveTemplatePresetId(commandPresets, usableTemplates[0])
-  )
+  /** Existing projects always require an explicit CLI choice instead of inheriting later role edits. */
+  const [presetId, setPresetId] = useState('claude')
   const [error, setError] = useState<string | null>(null)
   const selectedTemplate = usableTemplates.find((template) => template.id === templateId)
 
@@ -55,7 +48,6 @@ export const TeamDialog = ({
     const template = usableTemplates.find((item) => item.id === value)
     setName(template?.name ?? '')
     setDescription(template?.description ?? '')
-    if (template) setPresetId(resolveTemplatePresetId(commandPresets, template))
   }
 
   /** Creates a worker from a preset or the supplied custom behavior contract. */

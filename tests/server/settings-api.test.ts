@@ -105,7 +105,7 @@ describe('settings api', () => {
     })
   })
 
-  test('custom role CRUD works while built-in roles only expose default CLI updates', async () => {
+  test('custom role CRUD works while built-in responsibility and default CLI stay editable', async () => {
     const server = await startTestServer()
     servers.push(server)
     const cookie = await getUiCookie(server.baseUrl)
@@ -151,7 +151,10 @@ describe('settings api', () => {
       {
         method: 'PATCH',
         headers: { 'content-type': 'application/json', cookie },
-        body: JSON.stringify({ default_command: 'codex' }),
+        body: JSON.stringify({
+          default_command: 'codex',
+          description: '负责新的项目协调职责',
+        }),
       }
     )
     expect(builtinCliResponse.status).toBe(200)
@@ -160,6 +163,7 @@ describe('settings api', () => {
         id: 'orchestrator',
         name: '部门经理',
         default_command: 'codex',
+        description: '负责新的项目协调职责',
       })
     )
 

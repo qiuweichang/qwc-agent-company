@@ -103,10 +103,11 @@ export const createRoleTemplateStore = (db: Database) => {
   const update = (id: string, input: RoleTemplateInput) => {
     const current = list().find((template) => template.id === id)
     if (!current) throw new Error(`Role template not found: ${id}`)
-    /** Built-in responsibilities stay immutable while their default CLI remains user-configurable. */
+    /** Built-in identity stays immutable while its responsibility and future-project CLI remain editable. */
     const next = current.isBuiltin
       ? {
           ...current,
+          description: input.description.trim() || current.description,
           defaultCommand: input.defaultCommand.trim() || current.defaultCommand,
         }
       : input
