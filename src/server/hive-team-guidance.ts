@@ -28,7 +28,7 @@ export const ORCHESTRATOR_REMINDER_TAIL =
  */
 export const buildWorkerReminderTail = (dispatchId: string) =>
   '<hive-system-reminder>\n' +
-  `You are a Hive Worker. Do not launch nested CLI subagents (Task / Explore / etc.) — finish the task yourself. When the task is done, blocked, or has failed, report with: \`team report "<result>" --dispatch ${dispatchId}\` (or \`team report --stdin --dispatch ${dispatchId}\` for long bodies).\n` +
+  `You are a Hive Worker. Do not launch nested CLI subagents (Task / Explore / etc.) — finish the task yourself. When the task is done, blocked, or has failed, report with: \`team report "<result>" --dispatch ${dispatchId}\` (or \`team report --stdin --dispatch ${dispatchId}\` for long bodies). On Windows PowerShell, before piping any non-ASCII text to \`--stdin\`, run \`$utf8 = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = $utf8; [Console]::OutputEncoding = $utf8\` in the current session.\n` +
   '</hive-system-reminder>'
 
 const ORCHESTRATOR_RULES = [
@@ -49,6 +49,7 @@ const WORKER_RULES = [
   '如果当前没有明确派发任务，只是汇报待命、环境或状态，使用 `team status "<当前状态>"`。',
   '`team --help` 只用于查命令语法，**绝不是** 汇报手段；其输出不会进入部门经理视野，跑完后仍需正式调用 `team report` / `team status`。',
   '`team report` / `team status` 报错时会同时打印 USAGE，按 USAGE 修正参数后重试；不要把 `team --help` 当成"自我探查"的替身。',
+  '在 Windows PowerShell 中通过 `--stdin` 回传中文或其他非 ASCII 内容前，必须先在当前会话执行 `$utf8 = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = $utf8; [Console]::OutputEncoding = $utf8`，再把原文通过管道回传。',
 ]
 
 export const getHiveTeamRules = (agent: Pick<AgentSummary, 'role'>) =>
@@ -94,6 +95,12 @@ export const buildProtocolDoc = (): string =>
     '- `team report "<result>" --dispatch <id>` — report task outcome',
     "- `team report --stdin --dispatch <id>` — same, body from stdin (use `<<'EOF'` heredoc for long bodies)",
     '- `team status "<state>"` — update the Department Manager when no dispatch is active',
+    '',
+    '### Windows PowerShell UTF-8 setup',
+    '',
+    'Before piping any non-ASCII report or status body to `--stdin`, run this once in the current PowerShell session:',
+    '',
+    '`$utf8 = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = $utf8; [Console]::OutputEncoding = $utf8`',
     '',
     '## Department Manager rules',
     '',

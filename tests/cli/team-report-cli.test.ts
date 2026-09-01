@@ -441,4 +441,26 @@ describe('team report cli', () => {
     expect(result.stderr).toContain('--stdin is mutually exclusive with a positional argument')
     expect(result.stderr).toContain('Usage:')
   })
+
+  test('team report --stdin rejects text already damaged by PowerShell encoding', async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'hive-team-report-stdin-encoding-loss-'))
+    tempDirs.push(dataDir)
+
+    const result = await runTeamBinaryWithStdin(
+      ['report', '--stdin'],
+      {
+        HIVE_DATA_DIR: dataDir,
+        HIVE_AGENT_ID: 'unused',
+        HIVE_AGENT_TOKEN: 'unused',
+        HIVE_PORT: '1',
+        HIVE_PROJECT_ID: 'unused',
+      },
+      '\uFEFF????????????????\nRound 1\n????????????????????'
+    )
+
+    expect(result.code).toBe(1)
+    expect(result.stderr).toContain('Windows PowerShell output encoding')
+    expect(result.stderr).toContain('No report was saved')
+    expect(result.stderr).toContain('$OutputEncoding = $utf8')
+  })
 })

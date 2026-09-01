@@ -1,6 +1,30 @@
 import { describe, expect, test } from 'vitest'
 
-import { parseCancelArgs, parseReportArgs } from '../../src/cli/team.js'
+import {
+  normalizeTeamStdinContent,
+  parseCancelArgs,
+  parseReportArgs,
+} from '../../src/cli/team.js'
+
+describe('normalizeTeamStdinContent', () => {
+  test('preserves valid Chinese content and removes an optional UTF-8 byte-order mark', () => {
+    expect(normalizeTeamStdinContent('\uFEFF需求已确认，请继续开发。')).toBe(
+      '需求已确认，请继续开发。'
+    )
+  })
+
+  test('rejects the high-density question-mark pattern caused by PowerShell encoding loss', () => {
+    expect(() =>
+      normalizeTeamStdinContent('\uFEFF????????????????\nRound 1\n????????????????????')
+    ).toThrow(/Windows PowerShell output encoding/)
+  })
+
+  test('allows ordinary reports that contain legitimate question punctuation', () => {
+    expect(normalizeTeamStdinContent('Ready? Why? Please confirm?')).toBe(
+      'Ready? Why? Please confirm?'
+    )
+  })
+})
 
 describe('parseReportArgs', () => {
   test('accepts the legacy positional-first form', () => {

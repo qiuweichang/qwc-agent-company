@@ -38,6 +38,12 @@ describe('buildWorkerReminderTail', () => {
     expect(tail).toContain('team report --stdin --dispatch disp-abc')
   })
 
+  test('includes the Windows PowerShell UTF-8 setup beside stdin reporting guidance', () => {
+    const tail = buildWorkerReminderTail('disp-utf8')
+    expect(tail).toContain('$OutputEncoding = $utf8')
+    expect(tail).toContain('[Console]::OutputEncoding = $utf8')
+  })
+
   test('different dispatch_ids produce different reminder bodies', () => {
     const left = buildWorkerReminderTail('disp-1')
     const right = buildWorkerReminderTail('disp-2')
@@ -68,6 +74,12 @@ describe('buildProtocolDoc', () => {
   test('mentions the .hive/PROTOCOL.md cat-recover path explicitly', () => {
     const doc = buildProtocolDoc()
     expect(doc).toContain('`cat .hive/PROTOCOL.md`')
+  })
+
+  test('documents the Windows PowerShell UTF-8 setup for non-ASCII stdin bodies', () => {
+    const doc = buildProtocolDoc()
+    expect(doc).toContain('### Windows PowerShell UTF-8 setup')
+    expect(doc).toContain('$OutputEncoding = $utf8')
   })
 
   test('starts with an H1 heading so a tail of the file is still self-identifying', () => {

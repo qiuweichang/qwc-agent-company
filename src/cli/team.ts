@@ -35,6 +35,9 @@ const TEAM_USAGE = [
   '  ... long report ...',
   '  EOF',
   '',
+  'Windows PowerShell must emit UTF-8 before piping non-ASCII text to --stdin:',
+  '  $utf8 = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = $utf8; [Console]::OutputEncoding = $utf8',
+  '',
   'For role rules, workflow, and recovery instructions, see .hive/PROTOCOL.md',
 ].join('\n')
 
@@ -138,6 +141,47 @@ const usageFor = (command: string) => {
 }
 
 const withUsage = (message: string, command: string) => `${message}\n\n${usageFor(command)}`
+
+const WINDOWS_POWERSHELL_UTF8_SETUP =
+  '$utf8 = [System.Text.UTF8Encoding]::new($false); $OutputEncoding = $utf8; [Console]::OutputEncoding = $utf8'
+
+/**
+ * Normalizes a body read from stdin and rejects the distinctive high-density
+ * question-mark pattern produced when Windows PowerShell 5 encodes Unicode
+ * text with its legacy native-pipeline encoding. Rejecting before the HTTP
+ * request matters because the original characters cannot be recovered after
+ * they have already become literal ASCII question marks.
+ *
+ * @param content Raw UTF-8-decoded stdin body.
+ * @param command Team subcommand used to select the matching usage hint.
+ * @returns The body without an optional UTF-8 byte-order mark.
+ */
+export const normalizeTeamStdinContent = (content: string, command = 'report'): string => {
+  const normalized = content.replace(/^\uFEFF/, '')
+  if (!normalized.trim()) {
+    throw new Error(withUsage('--stdin received empty input', command))
+  }
+
+  const visibleLength = normalized.replace(/\s/g, '').length
+  const questionMarkCount = normalized.match(/\?/g)?.length ?? 0
+  const hasLikelyEncodingLoss =
+    /\?{6,}/.test(normalized) &&
+    questionMarkCount >= 12 &&
+    visibleLength > 0 &&
+    questionMarkCount / visibleLength >= 0.2
+
+  if (hasLikelyEncodingLoss) {
+    throw new Error(
+      withUsage(
+        '--stdin appears to contain text damaged by Windows PowerShell output encoding (many characters became "?"). No report was saved. Configure UTF-8 in the current PowerShell session, then pipe the original text again:\n' +
+          WINDOWS_POWERSHELL_UTF8_SETUP,
+        command
+      )
+    )
+  }
+
+  return normalized
+}
 
 export interface ParsedReportArgs {
   artifacts: string[]
@@ -280,11 +324,7 @@ export const readStdinToString = async (command = 'report'): Promise<string> => 
   for await (const chunk of process.stdin) {
     chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
   }
-  const content = Buffer.concat(chunks).toString('utf8')
-  if (!content.trim()) {
-    throw new Error(withUsage('--stdin received empty input', command))
-  }
-  return content
+  return normalizeTeamStdinContent(Buffer.concat(chunks).toString('utf8'), command)
 }
 
 interface ParsedStitchGenerateArgs {
