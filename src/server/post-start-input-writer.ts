@@ -12,6 +12,7 @@ const PASTE_CHARS_PER_DELAY_MS = 4
 const PASTE_ACK_CHECK_INTERVAL_MS = 50
 const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
+const CODEX_SECOND_SUBMIT_DELAY_MS = 500
 const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
 const CLAUDE_TRUST_TIMEOUT_MS = 5000
 const CLAUDE_TRUST_POLL_INTERVAL_MS = 50
@@ -138,6 +139,7 @@ const submitPastedInteractiveInput = (
   text: string,
   baselineLength: number,
   waitForPasteAck: boolean,
+  repeatSubmit: boolean,
   onSubmitted: () => void
 ) => {
   const pastedAt = Date.now()
@@ -158,9 +160,23 @@ const submitPastedInteractiveInput = (
       writeIfRunWritable(agentManager, runId, '\r')
     } catch {
       // The PTY may have exited between paste and submit.
-    } finally {
-      onSubmitted()
     }
+
+    if (!repeatSubmit) {
+      onSubmitted()
+      return
+    }
+
+    // Codex can use the first Enter to accept a large bracketed-paste block
+    // without submitting it. A delayed second Enter is a no-op if execution
+    // already started, but reliably moves an accepted block into Working state.
+    setTimeout(() => {
+      try {
+        writeIfRunWritable(agentManager, runId, '\r')
+      } finally {
+        onSubmitted()
+      }
+    }, CODEX_SECOND_SUBMIT_DELAY_MS)
   }
 
   const trySubmit = () => {
@@ -271,6 +287,7 @@ export const createPostStartInputWriter = (
           batchedText,
           baselineLength,
           isClaudeCommand(pendingInput.command),
+          getCommandName(pendingInput.command) === 'codex',
           () => {
             pendingInput.scheduled = false
             pendingInput.readyAfterOutputLength = baselineLength
