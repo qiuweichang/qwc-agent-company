@@ -391,13 +391,23 @@ export const transitionProjectWorkflow = async (
   return fromWorkflowPayload((await response.json()) as ProjectWorkflowStatePayload)
 }
 
-/** Sends user text to the department manager while preserving its visible recipient and thread. */
+/** Sends user text to the selected CLI member while preserving its visible recipient and thread. */
 export const sendProjectMessage = async (
   workspaceId: string,
-  input: { recipient: string; text: string; thread: WorkflowThread }
+  input: {
+    freezeRequirements?: boolean
+    recipient: string
+    text: string
+    thread: WorkflowThread
+  }
 ): Promise<void> => {
   const response = await apiFetch(`/api/workspaces/${workspaceId}/user-input`, {
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      ...(input.freezeRequirements ? { freeze_requirements: true } : {}),
+      recipient: input.recipient,
+      text: input.text,
+      thread: input.thread,
+    }),
     headers: { 'content-type': 'application/json' },
     method: 'POST',
   })

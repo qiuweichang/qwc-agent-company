@@ -68,6 +68,7 @@ import { MessageJumpRail } from './MessageJumpRail.js'
 import {
   parseProductChoicePrompt,
   ProductChoicePanel,
+  RequirementFreezeAction,
 } from './ProductChoicePanel.js'
 import { ProjectArchivePanel } from './ProjectArchivePanel.js'
 import { ProjectDialog } from './ProjectDialog.js'
@@ -524,9 +525,14 @@ export const AgentCompanyApp = () => {
   /**
    * Persists one user response for the requested recipient and mirrors it locally
    * so both composer replies and structured choices share identical semantics.
-   * Returns true only when Runtime accepts the message.
+   * The optional freeze flag tells the PM to finalize the specification instead
+   * of asking another question. Returns true only when Runtime accepts the message.
    */
-  const submitProjectResponse = async (text: string, targetRecipient: string) => {
+  const submitProjectResponse = async (
+    text: string,
+    targetRecipient: string,
+    options: { freezeRequirements?: boolean } = {}
+  ) => {
     if (!activeWorkspaceId || !text.trim()) return false
     const normalizedText = text.trim()
     const sentAt = Date.now()
@@ -534,6 +540,7 @@ export const AgentCompanyApp = () => {
     setBusy(true)
     try {
       await sendProjectMessage(activeWorkspaceId, {
+        ...(options.freezeRequirements ? { freezeRequirements: true } : {}),
         recipient: targetRecipient,
         text: normalizedText,
         thread,
@@ -572,7 +579,7 @@ export const AgentCompanyApp = () => {
   /** Sends a structured decision directly to the product manager without using the composer. */
   const submitProductChoice = async (response: string) => {
     setRecipient('产品经理')
-    await submitProjectResponse(response, '产品经理')
+    return submitProjectResponse(response, '产品经理')
   }
 
   /** Applies a server-validated gate transition and switches to its canonical thread. */
@@ -588,6 +595,20 @@ export const AgentCompanyApp = () => {
     } finally {
       setBusy(false)
     }
+  }
+
+  /** Persists the final choice first, then advances the workflow only when delivery succeeds. */
+  const submitProductChoiceAndFreeze = async (response: string) => {
+    setRecipient('产品经理')
+    const accepted = await submitProjectResponse(response, '产品经理', {
+      freezeRequirements: true,
+    })
+    if (accepted) await applyWorkflowAction('freeze_requirements')
+  }
+
+  /** Ends a free-form PM interview while still recording an explicit user confirmation. */
+  const confirmRequirementsAndFreeze = async () => {
+    await submitProductChoiceAndFreeze('需求已确认，不再继续提问，请整理并封板需求。')
   }
 
   /** Preserves multiline authoring while Enter sends the current project message. */
@@ -875,6 +896,7 @@ export const AgentCompanyApp = () => {
                               <ProductChoicePanel
                                 busy={busy}
                                 onSubmit={submitProductChoice}
+                                onSubmitAndFreeze={submitProductChoiceAndFreeze}
                                 prompt={choicePrompt}
                               />
                             ) : null}
@@ -888,10 +910,11 @@ export const AgentCompanyApp = () => {
                             ))}
                             {thread === 'planning' &&
                             workflow?.stage === 'requirements' &&
-                            entry.id === latestProductManagerEntryId ? (
-                              <RequirementFreezeGate
+                            entry.id === latestProductManagerEntryId &&
+                            !choicePrompt ? (
+                              <RequirementFreezeAction
                                 busy={busy}
-                                onAction={applyWorkflowAction}
+                                onFreeze={confirmRequirementsAndFreeze}
                               />
                             ) : null}
                           </article>
@@ -1276,32 +1299,6 @@ const WorkflowGate = ({
     </section>
   )
 }
-
-/** Places requirement sealing directly below the PM's latest response instead of in the dock. */
-const RequirementFreezeGate = ({
-  busy,
-  onAction,
-}: {
-  busy: boolean
-  onAction: (action: WorkflowAction) => Promise<void>
-}) => (
-  <section className="ac-gate ac-gate--requirements-inline">
-    <div>
-      <span className="ac-eyebrow">REQUIREMENT GATE</span>
-      <strong>需求已经聊清楚了吗？</strong>
-      <p>封板后规格仍留在规划流程，部门经理才能派给架构师与 UI 设计师。</p>
-    </div>
-    <button
-      type="button"
-      className="ac-button ac-button--primary"
-      disabled={busy}
-      onClick={() => void onAction('freeze_requirements')}
-    >
-      <Check size={15} />
-      封板需求
-    </button>
-  </section>
-)
 
 /** A single user confirmation gate tied to a reported real artifact. */
 const ApprovalGate = ({

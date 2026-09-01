@@ -310,8 +310,20 @@ export const workspaceRoutes: RouteDefinition[] = [
           }
         }
       }
+      const finalizeRequirements = recipient.includes('产品') && body.freeze_requirements === true
       const directWorkerInstructions = recipient.includes('产品')
-        ? [
+        ? finalizeRequirements
+          ? [
+              `[${threadLabel} · 用户确认并封板需求]`,
+              '任务内容：用户已确认最终选择。停止继续提问，立即整理并封板需求。',
+              `项目：${workspace.name}`,
+              `工作目录：${workspace.path}`,
+              `用户最终确认：${body.text}`,
+              '请读取并严格执行 $AGENT_COMPANY_HOME/vendor/skills/matt/to-spec/SKILL.md，把完整访谈和最终选择综合为 docs/specs/ 下的规格文件。',
+              '完成后通过 team report 返回简洁的封板摘要和规格文件路径，不得再向用户提出新问题。',
+              'team report 正文会原样以“产品经理”身份直接显示给用户。请直接对用户说，不要请求部门经理转达。',
+            ].join('\n')
+          : [
             `[${threadLabel} · 用户直接回复产品经理]`,
             '任务内容：基于用户最新回答继续需求澄清，并返回下一个最高价值问题。',
             `项目：${workspace.name}`,

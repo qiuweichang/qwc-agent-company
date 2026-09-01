@@ -1,4 +1,4 @@
-import { Check } from 'lucide-react'
+import { Check, LockKeyhole } from 'lucide-react'
 import { useId, useState } from 'react'
 
 export interface ProductChoiceOption {
@@ -75,7 +75,8 @@ export const parseProductChoicePrompt = (text: string): ProductChoicePrompt | nu
 
 interface ProductChoicePanelProps {
   busy: boolean
-  onSubmit: (response: string) => Promise<void>
+  onSubmit: (response: string) => Promise<boolean>
+  onSubmitAndFreeze: (response: string) => Promise<void>
   prompt: ProductChoicePrompt
 }
 
@@ -83,15 +84,32 @@ interface ProductChoicePanelProps {
  * Presents the current product decision as a native single-choice form. It keeps
  * the decision local until confirmation, then sends one concise answer upstream.
  */
-export const ProductChoicePanel = ({ busy, onSubmit, prompt }: ProductChoicePanelProps) => {
+export const ProductChoicePanel = ({
+  busy,
+  onSubmit,
+  onSubmitAndFreeze,
+  prompt,
+}: ProductChoicePanelProps) => {
   const groupName = useId()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = prompt.options.find((option) => option.id === selectedId) ?? null
 
+  /** Builds the concise product-manager reply shared by both confirmation paths. */
+  const buildSelectionResponse = () =>
+    selected ? `选择 ${selected.id}：${selected.label}` : null
+
   /** Converts the selected card into the short, unambiguous reply expected by the CLI agent. */
   const confirmSelection = async () => {
-    if (!selected) return
-    await onSubmit(`选择 ${selected.id}：${selected.label}`)
+    const response = buildSelectionResponse()
+    if (!response) return
+    await onSubmit(response)
+  }
+
+  /** Sends the final selection before freezing requirements so the specification includes it. */
+  const confirmSelectionAndFreeze = async () => {
+    const response = buildSelectionResponse()
+    if (!response) return
+    await onSubmitAndFreeze(response)
   }
 
   return (
@@ -121,11 +139,46 @@ export const ProductChoicePanel = ({ busy, onSubmit, prompt }: ProductChoicePane
       </div>
       <div className="ac-product-choice__actions">
         <span>{selected ? `已选择 ${selected.id}` : '选择后即可确认'}</span>
-        <button type="button" disabled={!selected || busy} onClick={() => void confirmSelection()}>
-          <Check size={14} />
-          确认选择
-        </button>
+        <div className="ac-product-choice__action-buttons">
+          <button
+            type="button"
+            className="is-secondary"
+            disabled={!selected || busy}
+            onClick={() => void confirmSelection()}
+          >
+            <Check size={14} />
+            确认选择
+          </button>
+          <button
+            type="button"
+            disabled={!selected || busy}
+            onClick={() => void confirmSelectionAndFreeze()}
+          >
+            <LockKeyhole size={13} />
+            确认并封板
+          </button>
+        </div>
       </div>
     </fieldset>
   )
 }
+
+/**
+ * Offers requirement sealing after a product-manager reply that has no structured
+ * choices. The composer stays available so users can keep discussing instead.
+ */
+export const RequirementFreezeAction = ({
+  busy,
+  onFreeze,
+}: {
+  busy: boolean
+  onFreeze: () => Promise<void>
+}) => (
+  <div className="ac-requirement-freeze-action">
+    <span>如果需求已经明确，可以直接结束需求澄清；如需补充，继续在下方回复即可。</span>
+    <button type="button" disabled={busy} onClick={() => void onFreeze()}>
+      <LockKeyhole size={13} />
+      确认并封板
+    </button>
+  </div>
+)

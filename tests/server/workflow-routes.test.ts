@@ -23,6 +23,39 @@ const transition = (baseUrl: string, cookie: string, workspaceId: string, action
   })
 
 describe('project workflow routes', () => {
+  test('routes confirm-and-freeze input to PM specification finalization instead of another question', async () => {
+    const workspacePath = mkdtempSync(join(tmpdir(), 'agent-company-workflow-freeze-'))
+    workspaceDirs.push(workspacePath)
+    const server = await startTestServer()
+    try {
+      const cookie = await getUiCookie(server.baseUrl)
+      const workspace = server.store.createWorkspace(workspacePath, 'Police Dashboard')
+
+      const response = await fetch(
+        `${server.baseUrl}/api/workspaces/${workspace.id}/user-input`,
+        {
+          body: JSON.stringify({
+            freeze_requirements: true,
+            recipient: '产品经理',
+            text: '选择 B：分阶段接入',
+            thread: 'planning',
+          }),
+          headers: { 'content-type': 'application/json', cookie },
+          method: 'POST',
+        }
+      )
+
+      expect(response.status).toBe(202)
+      const [dispatch] = server.store.listDispatches(workspace.id, { limit: 1 })
+      expect(dispatch?.text).toContain('用户确认并封板需求')
+      expect(dispatch?.text).toContain('matt/to-spec/SKILL.md')
+      expect(dispatch?.text).toContain('不得再向用户提出新问题')
+      expect(dispatch?.text).not.toContain('返回下一个最高价值问题')
+    } finally {
+      await server.close()
+    }
+  })
+
   test('keeps planning history separate and blocks development until both real artifacts are approved', async () => {
     const workspacePath = mkdtempSync(join(tmpdir(), 'agent-company-workflow-'))
     workspaceDirs.push(workspacePath)

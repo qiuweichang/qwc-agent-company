@@ -60,6 +60,8 @@ export interface CreateWorkerBody {
 }
 
 export interface UserInputBody {
+  /** True when this message is the user's final requirement decision and the PM must stop asking. */
+  freeze_requirements?: boolean
   recipient?: string
   text: string
   thread?: WorkflowThread

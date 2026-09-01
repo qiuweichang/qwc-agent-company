@@ -107,7 +107,7 @@ export const createWorkflowStore = (db: Database) => {
         next.activeThread = 'planning'
         thread = 'planning'
         eventText =
-          '需求已封板。部门经理须立即读取确认后的规格，并行派发架构师和 UI 设计师产出可供用户确认的方案。'
+          '需求已由用户确认封板。产品经理正在整理最终规格；部门经理收到其封板汇报后，须读取规格，并行派发架构师和 UI 设计师产出可供用户确认的方案。'
         break
       case 'approve_architecture':
         if (!current.requirementsFrozen) throw new ConflictError('请先封板需求')

@@ -347,7 +347,6 @@ button {
 .ac-gate--stack { display: block; background: #fff; }
 .ac-gate__title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .ac-gate--complete { justify-content: flex-start; color: #087656; }
-.ac-gate--requirements-inline { max-width: none; margin: 16px 0 0; padding: 13px 14px; }
 
 .ac-approval-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #edf0f4; padding: 12px 0; }
 .ac-approval-row > div { display: flex; align-items: center; gap: 9px; }
@@ -785,8 +784,15 @@ button {
 .ac-product-choice__option em { border-radius: 999px; padding: 3px 7px; color: #087656; background: #e7f7f1; font-size: 8px; font-style: normal; font-weight: 700; }
 .ac-product-choice__actions { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
 .ac-product-choice__actions > span { color: #7b8798; font-size: 9px; }
-.ac-product-choice__actions button { display: inline-flex; align-items: center; gap: 5px; border: 0; border-radius: 8px; padding: 8px 11px; color: #fff; background: #2563eb; font-size: 10px; font-weight: 650; cursor: pointer; }
+.ac-product-choice__action-buttons { display: flex; align-items: center; gap: 7px; }
+.ac-product-choice__actions button,
+.ac-requirement-freeze-action button { display: inline-flex; align-items: center; gap: 5px; border: 1px solid #2563eb; border-radius: 8px; padding: 8px 11px; color: #fff; background: #2563eb; font-size: 10px; font-weight: 650; cursor: pointer; }
+.ac-product-choice__actions button.is-secondary { color: #315b99; border-color: #b9cbea; background: #fff; }
 .ac-product-choice__actions button:disabled { cursor: not-allowed; opacity: .45; }
+.ac-requirement-freeze-action { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 8px 0 14px 40px; border-top: 1px solid #e6ecf3; padding-top: 10px; }
+.ac-requirement-freeze-action > span { color: #738096; font-size: 9px; line-height: 1.45; }
+.ac-requirement-freeze-action button { flex: 0 0 auto; border-color: #16966a; background: #16966a; }
+.ac-requirement-freeze-action button:disabled { cursor: not-allowed; opacity: .45; }
 
 .ac-archive-panel { min-height: 0; overflow-y: auto; padding: 22px 24px 40px; background: #f8fafc; }
 .ac-archive-panel > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 17px; }
