@@ -1,11 +1,9 @@
 # AGENTS.md
 
-Public coding rules for AI-assisted work in this repository.
-
-Hive's unpublished implementation plans and product strategy are not published
-here. For public contributions, use the current code, README, tests, and issue
-discussion as the source of truth. If behavior is unclear, ask before changing
-protocol semantics.
+Engineering rules for AI-assisted work on Agent Company. Use the current code,
+README, tests, and user-confirmed product behavior as the source of truth. The
+project retains selected Hive protocol internals, so verify call sites before
+changing persisted data, PTY lifecycle, or `team` command semantics.
 
 ## Hard Bans
 

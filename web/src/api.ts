@@ -158,42 +158,6 @@ export const stopProjectDeployment = async (workspaceId: string) => {
   return (await response.json()) as ProjectDeployment | null
 }
 
-export interface VersionInfo {
-  currentVersion: string
-  installHint: string
-  latestVersion: string
-  packageName: string
-  releaseUrl: string
-  updateAvailable: boolean
-}
-
-interface VersionInfoPayload {
-  current_version: string
-  install_hint: string
-  latest_version: string
-  package_name: string
-  release_url: string
-  update_available: boolean
-}
-
-export const getVersionInfo = async (): Promise<VersionInfo> => {
-  const response = await apiFetch('/api/version')
-
-  if (!response.ok) {
-    throw new Error('Failed to load version info')
-  }
-
-  const payload = (await response.json()) as VersionInfoPayload
-  return {
-    currentVersion: payload.current_version,
-    installHint: payload.install_hint,
-    latestVersion: payload.latest_version,
-    packageName: payload.package_name,
-    releaseUrl: payload.release_url,
-    updateAvailable: payload.update_available,
-  }
-}
-
 export interface OrchestratorStartResult {
   ok: boolean
   error: string | null
@@ -754,63 +718,6 @@ export const deleteRoleTemplate = async (templateId: string): Promise<void> => {
   if (!response.ok) {
     throw new Error(await readErrorMessage(response, 'Failed to delete role template'))
   }
-}
-
-export type MarketplaceLanguage = 'en' | 'zh'
-
-export interface MarketplaceAgentEntry {
-  path: string
-  category: string
-  name: string
-  displayName?: string
-  nameOverflows?: boolean
-  description: string
-  emoji: string | null
-  color: string | null
-  vibe: string | null
-}
-
-export interface MarketplaceManifest {
-  source: {
-    repo: string
-    commit: string
-    fetched_at: string
-  }
-  language: MarketplaceLanguage
-  categories: string[]
-  agents: MarketplaceAgentEntry[]
-}
-
-export interface MarketplaceAgentDetail {
-  path: string
-  frontmatter: Record<string, unknown>
-  body: string
-}
-
-export const fetchMarketplaceManifest = async (
-  lang: MarketplaceLanguage
-): Promise<MarketplaceManifest> => {
-  const response = await apiFetch(`/api/marketplace/manifest?lang=${lang}`, {
-    mode: 'same-origin',
-  })
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load marketplace manifest'))
-  }
-  return (await response.json()) as MarketplaceManifest
-}
-
-export const fetchMarketplaceAgent = async (
-  lang: MarketplaceLanguage,
-  path: string
-): Promise<MarketplaceAgentDetail> => {
-  const response = await apiFetch(
-    `/api/marketplace/agent?lang=${lang}&path=${encodeURIComponent(path)}`,
-    { mode: 'same-origin' }
-  )
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response, 'Failed to load marketplace agent'))
-  }
-  return (await response.json()) as MarketplaceAgentDetail
 }
 
 export const listTerminalRuns = async (workspaceId: string): Promise<TerminalRunSummary[]> => {

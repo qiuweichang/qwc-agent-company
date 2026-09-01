@@ -456,7 +456,7 @@ button {
 .ac-error-toast span { margin-top: 3px; color: #70454b; font-size: 9px; }
 .ac-error-toast button { grid-column: 2; grid-row: 1 / span 2; border: 0; background: transparent; cursor: pointer; }
 
-/* Hive-derived desktop shell: project rail, conversation workspace and CLI team board. */
+/* Desktop shell: project rail, conversation workspace and CLI team board. */
 :root {
   --ac-green: #2563eb;
   --ac-green-bg: #eff6ff;

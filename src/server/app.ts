@@ -13,14 +13,12 @@ import { matchRoute } from './routes.js'
 import type { RuntimeStore } from './runtime-store.js'
 import { createTasksFileService, type TasksFileService } from './tasks-file.js'
 import { createTerminalWebSocketServer } from './terminal-ws-server.js'
-import { createVersionService, type VersionService } from './version-service.js'
 
 interface CreateAppOptions {
   store: RuntimeStore
   pickFolderService?: () => Promise<PickFolderResponse>
   openWorkspaceService?: OpenWorkspaceService
   tasksFileService?: TasksFileService
-  versionService?: VersionService
 }
 
 const getDefaultStaticDir = () => {
@@ -63,18 +61,8 @@ const CONTENT_TYPES: Record<string, string> = {
   '.svg': 'image/svg+xml; charset=utf-8',
   '.ttf': 'font/ttf',
   '.wasm': 'application/wasm',
-  '.webmanifest': 'application/manifest+json; charset=utf-8',
   '.webp': 'image/webp',
   '.woff2': 'font/woff2',
-}
-
-// PWA boot files must bypass HTTP caching: `sw.js` because the browser does its
-// own byte-diff update check, and the manifest because Chrome consults it on
-// every install/uninstall transition. Without these, SW updates can stall on a
-// stale cached copy and the install prompt won't reflect a renamed app.
-const PWA_BOOT_CACHE_CONTROL: Record<string, string> = {
-  '/manifest.webmanifest': 'max-age=0, must-revalidate',
-  '/sw.js': 'no-store',
 }
 
 const sendStatic = async (
@@ -92,8 +80,6 @@ const sendStatic = async (
       'content-type',
       CONTENT_TYPES[extname(filePath)] ?? 'application/octet-stream'
     )
-    const cacheControl = PWA_BOOT_CACHE_CONTROL[pathname]
-    if (cacheControl !== undefined) response.setHeader('cache-control', cacheControl)
     response.statusCode = 200
     response.end(request.method === 'HEAD' ? undefined : content)
     return true
@@ -113,7 +99,6 @@ export const createApp = ({
   pickFolderService = pickFolder,
   openWorkspaceService = (input) => openWorkspace(input),
   tasksFileService = createTasksFileService(),
-  versionService = createVersionService(),
 }: CreateAppOptions) => {
   const staticDir = process.env.HIVE_STATIC_DIR ?? getDefaultStaticDir()
   const staticAvailablePromise = canServeStatic(staticDir)
@@ -133,7 +118,6 @@ export const createApp = ({
           tasksFileService,
           pickFolderService,
           openWorkspaceService,
-          versionService,
           params: match.params,
         })
         return

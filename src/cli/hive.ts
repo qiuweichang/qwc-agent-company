@@ -10,16 +10,11 @@ import { createAgentManager } from '../server/agent-manager.js'
 import { createApp } from '../server/app.js'
 import { readPackageVersion } from '../server/package-version.js'
 import { createRuntimeStore, type RuntimeStore } from '../server/runtime-store.js'
-import { createVersionService, type VersionService } from '../server/version-service.js'
 
 interface RunHiveCommandResult {
   port: number
   close: () => Promise<void>
   store: RuntimeStore
-}
-
-type RunHiveCommandOptions = {
-  versionService?: VersionService
 }
 
 type ListenError = Error & {
@@ -97,7 +92,7 @@ const formatPortInUseMessage = (port: number) =>
     '  - Open the existing Agent Company window.',
     '  - Stop the process using that port:',
     `      lsof -tiTCP:${port} -sTCP:LISTEN | xargs kill`,
-    '  - Start Hive on another port:',
+    '  - Start Agent Company on another port:',
     `      agent-company --port ${port + 1}`,
   ].join('\n')
 
@@ -109,18 +104,15 @@ const formatListenError = (error: unknown, requestedPort: number) => {
 }
 
 export const runHiveCommand = async (
-  argv: string[],
-  options: RunHiveCommandOptions = {}
+  argv: string[]
 ): Promise<RunHiveCommandResult> => {
   const port = parsePort(argv)
   const dataDir = resolveDataDir()
-  const versionService = options.versionService ?? createVersionService()
   const app = createApp({
     store: createRuntimeStore({
       agentManager: createAgentManager(),
       dataDir,
     }),
-    versionService,
   })
 
   try {

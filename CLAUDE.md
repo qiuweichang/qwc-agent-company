@@ -1,43 +1,19 @@
-# CLAUDE.md
+# Agent Company development context
 
-This file gives AI coding tools public-safe project context for Hive. It stays
-brief by design: unpublished implementation plans and product strategy are not
-published in this repository.
+Agent Company is a local-first personal AI software company. Its Web UI
+coordinates real Claude Code and Codex CLI processes through a local Node.js
+runtime, PTYs, WebSocket streams, SQLite state, and the injected `team`
+dispatch protocol.
 
-## What Hive Is
+The product separates planning from execution:
 
-Hive is a browser-native workbench for coordinating multiple local CLI agents.
-Users create a workspace, start one Department Manager agent, add worker agents, and
-let them communicate through Hive's injected `team` protocol.
+- Product requirements, architecture, UI design, and user approvals remain in
+  the planning flow.
+- Implementation, testing, acceptance, and delivery remain in the execution
+  flow.
+- Generated diagrams, prototypes, source code, and documents are indexed in
+  the project archive.
 
-Key properties:
-
-- Agents are real local PTY processes such as Claude Code, Codex, OpenCode,
-  Gemini, or custom commands.
-- The web UI talks to a local Node runtime over HTTP and WebSocket on
-  `127.0.0.1`.
-- Workspace metadata is stored locally in SQLite.
-- Workspace task state lives in `<workspace>/.hive/tasks.md`.
-- `team send`, `team report`, `team status`, and related commands are only
-  injected into Hive-managed agent sessions.
-
-## Public Development Source Of Truth
-
-For public work, use these files as the source of truth:
-
-1. `README.md` / `README.en.md` for user-facing behavior.
-2. `AGENTS.md` for coding and review constraints.
-3. Existing code and tests for implementation details.
-4. GitHub issues and PR discussion for scoped changes.
-
-If behavior is unclear, ask in an issue or PR before inventing protocol changes.
-
-## Engineering Rules
-
-- Keep protocol payloads stable and use snake_case on HTTP/JSON boundaries.
-- Preserve the agent state model: `idle`, `working`, `stopped`.
-- Do not add production fallbacks only to make tests pass.
-- Prefer real integration coverage for HTTP, SQLite, and PTY behavior.
-- Avoid broad refactors unless they directly support the change being made.
-
-For the full local coding rules, read `AGENTS.md`.
+Use `README.md` for product behavior and `AGENTS.md` for mandatory engineering
+rules. Preserve the existing HTTP/JSON protocol, agent status model, persisted
+state ordering, and real CLI runtime path when making changes.

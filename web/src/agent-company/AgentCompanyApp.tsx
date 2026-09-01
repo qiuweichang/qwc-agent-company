@@ -1140,7 +1140,7 @@ export const AgentCompanyApp = () => {
   )
 }
 
-/** Groups Hive-style member cards by runtime status and opens full context on click. */
+/** Groups member cards by runtime status and opens the member's full CLI context on click. */
 const TeamGroup = ({
   label,
   members,
