@@ -5,6 +5,7 @@ import type { AgentManager } from './agent-manager.js'
 const INTERACTIVE_COMMANDS = new Set(['claude', 'codex', 'gemini', 'opencode'])
 const READY_CHECK_INTERVAL_MS = 50
 const READY_TIMEOUT_MS = 3000
+const CODEX_INITIAL_BATCH_SETTLE_DELAY_MS = 300
 const MIN_SUBMIT_AFTER_PASTE_DELAY_MS = 600
 const MAX_SUBMIT_AFTER_PASTE_DELAY_MS = 1500
 const PASTE_CHARS_PER_DELAY_MS = 4
@@ -24,6 +25,8 @@ interface PendingInteractiveInput {
   command: string
   /** Prompts collected before the CLI reaches its first writable prompt. */
   pendingTexts: string[]
+  /** Output offset after the previous submit; later messages must wait for a fresh prompt. */
+  readyAfterOutputLength: number | null
   /** Prevents concurrent readiness loops from writing into the same TUI prompt. */
   scheduled: boolean
 }
@@ -206,7 +209,12 @@ export const createPostStartInputWriter = (
     }
     let pendingInput = managerQueues.get(runId)
     if (!pendingInput) {
-      pendingInput = { command, pendingTexts: [], scheduled: false }
+      pendingInput = {
+        command,
+        pendingTexts: [],
+        readyAfterOutputLength: null,
+        scheduled: false,
+      }
       managerQueues.set(runId, pendingInput)
     }
     pendingInput.pendingTexts.push(text)
@@ -215,6 +223,7 @@ export const createPostStartInputWriter = (
 
     const startedAt = Date.now()
     let isInitialAttempt = true
+    let promptReadyAt: number | null = null
     const tryWrite = () => {
       let output: string | null
       try {
@@ -228,11 +237,23 @@ export const createPostStartInputWriter = (
         managerQueues?.delete(runId)
         return
       }
-      if (
-        hasInteractivePromptReady(output, pendingInput.command) ||
-        (canTimeoutBeforePromptReady(pendingInput.command) &&
-          Date.now() - startedAt >= READY_TIMEOUT_MS)
-      ) {
+      const promptOutput =
+        pendingInput.readyAfterOutputLength === null
+          ? output
+          : output.slice(pendingInput.readyAfterOutputLength)
+      const promptIsReady = hasInteractivePromptReady(promptOutput, pendingInput.command)
+      const canUseInitialTimeout =
+        pendingInput.readyAfterOutputLength === null &&
+        canTimeoutBeforePromptReady(pendingInput.command) &&
+        Date.now() - startedAt >= READY_TIMEOUT_MS
+      if (promptIsReady || canUseInitialTimeout) {
+        if (promptReadyAt === null) promptReadyAt = Date.now()
+        const settleDelay =
+          getCommandName(pendingInput.command) === 'codex' ? CODEX_INITIAL_BATCH_SETTLE_DELAY_MS : 0
+        if (Date.now() - promptReadyAt < settleDelay) {
+          setTimeout(tryWrite, READY_CHECK_INTERVAL_MS)
+          return
+        }
         const baselineLength = output.length
         const batchedText = pendingInput.pendingTexts.splice(0).join('\n\n')
         const input = usesBracketedPaste(pendingInput.command)
@@ -252,14 +273,10 @@ export const createPostStartInputWriter = (
           isClaudeCommand(pendingInput.command),
           () => {
             pendingInput.scheduled = false
-            if (pendingInput.pendingTexts.length === 0) {
-              managerQueues?.delete(runId)
-              return
-            }
-            createPostStartInputWriter(agentManager, pendingInput.command)(
-              runId,
-              pendingInput.pendingTexts.splice(0).join('\n\n')
-            )
+            pendingInput.readyAfterOutputLength = baselineLength
+            if (pendingInput.pendingTexts.length === 0) return
+            const deferredText = pendingInput.pendingTexts.splice(0).join('\n\n')
+            createPostStartInputWriter(agentManager, pendingInput.command)(runId, deferredText)
           }
         )
         return

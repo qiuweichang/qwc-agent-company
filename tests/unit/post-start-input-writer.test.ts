@@ -115,6 +115,9 @@ describe('post-start input writer', () => {
     output += '❯ '
     vi.advanceTimersByTime(50)
 
+    expect(manager.writeInput).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(300)
+
     expect(manager.writeInput).toHaveBeenCalledTimes(1)
     expect(manager.writeInput).toHaveBeenNthCalledWith(
       1,
@@ -124,6 +127,33 @@ describe('post-start input writer', () => {
 
     vi.advanceTimersByTime(600)
     expect(manager.writeInput).toHaveBeenNthCalledWith(2, 'run-codex', '\r')
+  })
+
+  test('waits for a fresh Codex prompt before writing a later message', () => {
+    vi.useFakeTimers()
+    let output = 'OpenAI Codex\n❯ '
+    const manager = {
+      getRun: vi.fn(() => ({ output, status: 'running' })),
+      writeInput: vi.fn(),
+    }
+
+    const write = createPostStartInputWriter(manager as never, 'codex')
+    write('run-codex-fresh-prompt', 'first task')
+    vi.advanceTimersByTime(300)
+    vi.advanceTimersByTime(600)
+    expect(manager.writeInput).toHaveBeenCalledTimes(2)
+
+    write('run-codex-fresh-prompt', 'follow-up task')
+    vi.advanceTimersByTime(5000)
+    expect(manager.writeInput).toHaveBeenCalledTimes(2)
+
+    output += '\nWorking\n❯ '
+    vi.advanceTimersByTime(350)
+    expect(manager.writeInput).toHaveBeenNthCalledWith(
+      3,
+      'run-codex-fresh-prompt',
+      '\u001b[200~follow-up task\u001b[201~'
+    )
   })
 
   test('waits for Gemini prompt readiness and writes plain input without bracketed paste', () => {
