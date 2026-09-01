@@ -1,10 +1,11 @@
 import { Plus, Save, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-import type { RoleTemplate, RoleTemplateInput } from '../api.js'
+import type { CommandPreset, RoleTemplate, RoleTemplateInput } from '../api.js'
 
 interface RoleConfigDialogProps {
   busy: boolean
+  commandPresets: CommandPreset[]
   onClose: () => void
   onCreate: (input: RoleTemplateInput) => Promise<void>
   onDelete: (id: string) => Promise<void>
@@ -13,6 +14,7 @@ interface RoleConfigDialogProps {
 }
 
 const EMPTY_ROLE: RoleTemplateInput = {
+  defaultCommand: 'claude',
   description: '',
   name: '',
   roleType: 'custom',
@@ -21,6 +23,7 @@ const EMPTY_ROLE: RoleTemplateInput = {
 /** Provides a dedicated role-contract editor instead of coupling templates to team membership. */
 export const RoleConfigDialog = ({
   busy,
+  commandPresets,
   onClose,
   onCreate,
   onDelete,
@@ -40,6 +43,7 @@ export const RoleConfigDialog = ({
       return
     }
     setDraft({
+      defaultCommand: selected.defaultCommand ?? 'claude',
       description: selected.description,
       name: selected.name,
       roleType: selected.roleType,
@@ -71,7 +75,7 @@ export const RoleConfigDialog = ({
       setCreating(false)
       return
     }
-    if (selected && !selected.isBuiltin) await onUpdate(selected.id, input)
+    if (selected) await onUpdate(selected.id, input)
   }
 
   /** Deletes only user-created roles; built-in company roles remain protected. */
@@ -87,7 +91,7 @@ export const RoleConfigDialog = ({
         <header>
           <div>
             <h2>角色配置</h2>
-            <p>角色是可复用的职责与行为契约，团队成员再选择 Claude 或 Codex 运行。</p>
+            <p>角色是可复用的职责与行为契约，并可指定成员默认使用的 CLI。</p>
           </div>
           <button type="button" className="ac-icon-button" onClick={onClose} aria-label="关闭">
             <X size={18} />
@@ -110,7 +114,11 @@ export const RoleConfigDialog = ({
                 }}
               >
                 <strong>{template.name}</strong>
-                <small>{template.isBuiltin ? '系统预设 · 只读' : '自定义角色'}</small>
+                <small>
+                  {template.isBuiltin ? '系统预设 · 职责只读' : '自定义角色'} ·{' '}
+                  {commandPresets.find((preset) => preset.command === template.defaultCommand)
+                    ?.displayName ?? 'Claude Code (CC)'}
+                </small>
               </button>
             ))}
           </aside>
@@ -145,6 +153,22 @@ export const RoleConfigDialog = ({
                 <option value="orchestrator">部门经理</option>
               </select>
             </label>
+            <label className="ac-field">
+              <span>默认 CLI</span>
+              <select
+                value={draft.defaultCommand ?? 'claude'}
+                onChange={(event) =>
+                  setDraft((current) => ({ ...current, defaultCommand: event.target.value }))
+                }
+              >
+                {commandPresets.map((preset) => (
+                  <option key={preset.id} value={preset.command} disabled={!preset.available}>
+                    {preset.displayName}
+                    {preset.available ? '' : '（当前未检测到）'}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label className="ac-field ac-field--grow">
               <span>行为契约</span>
               <textarea
@@ -158,7 +182,7 @@ export const RoleConfigDialog = ({
             </label>
             {selected?.isBuiltin ? (
               <p className="ac-settings-note">
-                系统预设角色只读；可新建自定义角色覆盖自己的工作方式。
+                系统预设的名称、类型和行为契约只读，但可以调整默认 CLI。
               </p>
             ) : null}
             {error ? <p className="ac-form-error">{error}</p> : null}
@@ -171,7 +195,7 @@ export const RoleConfigDialog = ({
               <button
                 type="button"
                 className="ac-button ac-button--primary"
-                disabled={busy || selected?.isBuiltin}
+                disabled={busy}
                 onClick={save}
               >
                 <Save size={14} /> {creating ? '创建角色' : '保存修改'}

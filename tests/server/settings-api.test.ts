@@ -105,7 +105,7 @@ describe('settings api', () => {
     })
   })
 
-  test('custom role template CRUD works and builtins are immutable', async () => {
+  test('custom role CRUD works while built-in roles only expose default CLI updates', async () => {
     const server = await startTestServer()
     servers.push(server)
     const cookie = await getUiCookie(server.baseUrl)
@@ -144,6 +144,23 @@ describe('settings api', () => {
     expect(updateResponse.status).toBe(200)
     await expect(updateResponse.json()).resolves.toEqual(
       expect.objectContaining({ id: created.id, name: 'Doc Editor', description: 'Edit docs' })
+    )
+
+    const builtinCliResponse = await fetch(
+      `${server.baseUrl}/api/settings/role-templates/orchestrator`,
+      {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', cookie },
+        body: JSON.stringify({ default_command: 'codex' }),
+      }
+    )
+    expect(builtinCliResponse.status).toBe(200)
+    await expect(builtinCliResponse.json()).resolves.toEqual(
+      expect.objectContaining({
+        id: 'orchestrator',
+        name: '部门经理',
+        default_command: 'codex',
+      })
     )
 
     const builtinDeleteResponse = await fetch(

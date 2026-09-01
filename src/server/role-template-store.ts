@@ -103,22 +103,28 @@ export const createRoleTemplateStore = (db: Database) => {
   const update = (id: string, input: RoleTemplateInput) => {
     const current = list().find((template) => template.id === id)
     if (!current) throw new Error(`Role template not found: ${id}`)
-    if (current.isBuiltin) throw new ConflictError(`Builtin role template is read-only: ${id}`)
+    /** Built-in responsibilities stay immutable while their default CLI remains user-configurable. */
+    const next = current.isBuiltin
+      ? {
+          ...current,
+          defaultCommand: input.defaultCommand.trim() || current.defaultCommand,
+        }
+      : input
     db.prepare(
       `UPDATE role_templates
        SET name = ?, role_type = ?, description = ?, default_command = ?, default_args = ?, default_env = ?, updated_at = ?
        WHERE id = ?`
     ).run(
-      input.name,
-      input.roleType,
-      input.description,
-      input.defaultCommand,
-      serializeArgs(input.defaultArgs),
-      serializeEnv(input.defaultEnv),
+      next.name,
+      next.roleType,
+      next.description,
+      next.defaultCommand,
+      serializeArgs(next.defaultArgs),
+      serializeEnv(next.defaultEnv),
       Date.now(),
       id
     )
-    return { ...current, ...input }
+    return { ...current, ...next }
   }
 
   const remove = (id: string) => {

@@ -1067,4 +1067,32 @@ describe('schema version', () => {
     })
     db.close()
   })
+
+  test('migration defaults UI design and frontend roles to Codex exactly once', () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'agent-company-schema-v24-role-cli-'))
+    tempDirs.push(dataDir)
+
+    const db = new Database(join(dataDir, 'runtime.sqlite'))
+    initializeRuntimeDatabase(db)
+    db.prepare('DELETE FROM schema_version WHERE version = ?').run(24)
+    db.prepare(
+      "UPDATE role_templates SET default_command = 'claude' WHERE id IN ('ui_designer', 'frontend_engineer')"
+    ).run()
+
+    initializeRuntimeDatabase(db)
+
+    const defaults = db
+      .prepare(
+        "SELECT id, default_command FROM role_templates WHERE id IN ('ui_designer', 'frontend_engineer') ORDER BY id"
+      )
+      .all()
+    expect(defaults).toEqual([
+      { default_command: 'codex', id: 'frontend_engineer' },
+      { default_command: 'codex', id: 'ui_designer' },
+    ])
+    expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(24)).toEqual({
+      version: 24,
+    })
+    db.close()
+  })
 })

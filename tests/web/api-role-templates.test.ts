@@ -63,6 +63,7 @@ describe('role-templates api client', () => {
     })
 
     expect(created).toEqual({
+      defaultCommand: '',
       description: 'Writes documentation.',
       id: 'tpl-new',
       isBuiltin: false,
@@ -78,7 +79,7 @@ describe('role-templates api client', () => {
       name: 'Doc Writer',
       role_type: 'custom',
       description: 'Writes docs.',
-      default_command: '',
+      default_command: 'claude',
       default_args: [],
       default_env: {},
     })

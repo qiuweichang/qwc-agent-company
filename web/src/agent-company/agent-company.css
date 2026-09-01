@@ -347,6 +347,7 @@ button {
 .ac-gate--stack { display: block; background: #fff; }
 .ac-gate__title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .ac-gate--complete { justify-content: flex-start; color: #087656; }
+.ac-gate--requirements-inline { max-width: none; margin: 16px 0 0; padding: 13px 14px; }
 
 .ac-approval-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #edf0f4; padding: 12px 0; }
 .ac-approval-row > div { display: flex; align-items: center; gap: 9px; }

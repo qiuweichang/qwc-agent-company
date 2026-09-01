@@ -12,13 +12,13 @@ import {
 } from './role-templates.js'
 
 const BUILTIN_ROLES = [
-  ['orchestrator', DEPARTMENT_MANAGER_NAME, 'orchestrator', ORCHESTRATOR_ROLE_DESCRIPTION],
-  ['product_manager', PRODUCT_MANAGER_NAME, 'custom', PRODUCT_MANAGER_ROLE_DESCRIPTION],
-  ['architect', '架构师', 'custom', ARCHITECT_ROLE_DESCRIPTION],
-  ['ui_designer', 'UI 设计师', 'custom', UI_DESIGNER_ROLE_DESCRIPTION],
-  ['frontend_engineer', '前端工程师', 'coder', FRONTEND_ENGINEER_ROLE_DESCRIPTION],
-  ['backend_engineer', '后端工程师', 'coder', BACKEND_ENGINEER_ROLE_DESCRIPTION],
-  ['test_engineer', '测试工程师', 'tester', TEST_ENGINEER_ROLE_DESCRIPTION],
+  ['orchestrator', DEPARTMENT_MANAGER_NAME, 'orchestrator', ORCHESTRATOR_ROLE_DESCRIPTION, 'claude'],
+  ['product_manager', PRODUCT_MANAGER_NAME, 'custom', PRODUCT_MANAGER_ROLE_DESCRIPTION, 'claude'],
+  ['architect', '架构师', 'custom', ARCHITECT_ROLE_DESCRIPTION, 'claude'],
+  ['ui_designer', 'UI 设计师', 'custom', UI_DESIGNER_ROLE_DESCRIPTION, 'codex'],
+  ['frontend_engineer', '前端工程师', 'coder', FRONTEND_ENGINEER_ROLE_DESCRIPTION, 'codex'],
+  ['backend_engineer', '后端工程师', 'coder', BACKEND_ENGINEER_ROLE_DESCRIPTION, 'claude'],
+  ['test_engineer', '测试工程师', 'tester', TEST_ENGINEER_ROLE_DESCRIPTION, 'claude'],
 ] as const
 
 /** Replaces generic Hive presets with Agent Company's focused personal software team. */
@@ -43,7 +43,7 @@ export const applySchemaVersion20 = (db: Database) => {
     `INSERT INTO role_templates (
        id, name, role_type, description, default_command, default_args, default_env,
        is_builtin, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, 'claude', '[]', '{}', 1, ?, ?)
+     ) VALUES (?, ?, ?, ?, ?, '[]', '{}', 1, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        name = excluded.name,
        role_type = excluded.role_type,
@@ -54,7 +54,7 @@ export const applySchemaVersion20 = (db: Database) => {
        is_builtin = 1,
        updated_at = excluded.updated_at`
   )
-  for (const [id, name, roleType, description] of BUILTIN_ROLES) {
-    upsert.run(id, name, roleType, description, now, now)
+  for (const [id, name, roleType, description, defaultCommand] of BUILTIN_ROLES) {
+    upsert.run(id, name, roleType, description, defaultCommand, now, now)
   }
 }

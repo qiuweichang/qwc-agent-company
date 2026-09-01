@@ -209,6 +209,8 @@ export interface CommandPreset {
 }
 
 export interface RoleTemplate {
+  /** Executable name associated with the role's preferred CLI preset. */
+  defaultCommand?: string
   description: string
   id: string
   isBuiltin: boolean
@@ -217,6 +219,8 @@ export interface RoleTemplate {
 }
 
 export interface RoleTemplateInput {
+  /** Executable name selected as the role's default CLI; legacy callers fall back to Claude. */
+  defaultCommand?: string
   description: string
   name: string
   roleType: WorkerRole | 'orchestrator'
@@ -231,6 +235,7 @@ interface CommandPresetPayload {
 }
 
 interface RoleTemplatePayload {
+  default_command: string
   description: string
   id: string
   is_builtin: boolean
@@ -239,6 +244,7 @@ interface RoleTemplatePayload {
 }
 
 const fromRoleTemplatePayload = (payload: RoleTemplatePayload): RoleTemplate => ({
+  defaultCommand: payload.default_command,
   description: payload.description,
   id: payload.id,
   isBuiltin: payload.is_builtin,
@@ -250,7 +256,7 @@ const toRoleTemplateBody = (input: RoleTemplateInput) => ({
   name: input.name,
   role_type: input.roleType,
   description: input.description,
-  default_command: '',
+  default_command: input.defaultCommand ?? 'claude',
   default_args: [],
   default_env: {},
 })

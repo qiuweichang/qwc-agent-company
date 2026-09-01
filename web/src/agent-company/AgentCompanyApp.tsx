@@ -18,7 +18,10 @@ import {
 } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { DEPARTMENT_MANAGER_NAME } from '../../../src/shared/agent-company-labels.js'
+import {
+  DEPARTMENT_MANAGER_NAME,
+  PRODUCT_MANAGER_NAME,
+} from '../../../src/shared/agent-company-labels.js'
 import type { MemberPlan, MemberPlanItem } from '../../../src/shared/project-operations.js'
 import type { TeamListItem, WorkspaceSummary } from '../../../src/shared/types.js'
 import type {
@@ -365,7 +368,9 @@ export const AgentCompanyApp = () => {
         defaults.map((template) =>
           createWorker(workspace.id, {
             autostart: false,
-            command_preset_id: 'claude',
+            command_preset_id:
+              commandPresets.find((preset) => preset.command === template.defaultCommand)?.id ??
+              'claude',
             description: template.description,
             name: template.name,
             role: template.roleType === 'orchestrator' ? 'custom' : template.roleType,
@@ -400,6 +405,9 @@ export const AgentCompanyApp = () => {
           : (sourceTemplate?.roleType ?? 'custom')
       if (!sourceTemplate) {
         const customTemplate = await createRoleTemplate({
+          defaultCommand:
+            commandPresets.find((preset) => preset.id === input.commandPresetId)?.command ??
+            'claude',
           description: input.description,
           name: input.name,
           roleType: 'custom',
@@ -652,6 +660,15 @@ export const AgentCompanyApp = () => {
     }
     return null
   }, [entries])
+  /** Anchors requirement sealing to the latest visible product-manager response. */
+  const latestProductManagerEntryId = useMemo(() => {
+    for (let index = entries.length - 1; index >= 0; index -= 1) {
+      const entry = entries[index]
+      if (entry.type === 'user_input') return null
+      if (entry.actorName === PRODUCT_MANAGER_NAME && entry.type !== 'dispatch') return entry.id
+    }
+    return null
+  }, [entries])
 
   if (workspaces === null) {
     return (
@@ -869,6 +886,14 @@ export const AgentCompanyApp = () => {
                                 workspaceId={activeWorkspace.id}
                               />
                             ))}
+                            {thread === 'planning' &&
+                            workflow?.stage === 'requirements' &&
+                            entry.id === latestProductManagerEntryId ? (
+                              <RequirementFreezeGate
+                                busy={busy}
+                                onAction={applyWorkflowAction}
+                              />
+                            ) : null}
                           </article>
                         )
                       })
@@ -890,7 +915,6 @@ export const AgentCompanyApp = () => {
               <div className="ac-action-dock">
                 {workflow ? (
                   <WorkflowGate
-                    busy={busy}
                     hasArchitectureArtifact={hasArchitectureArtifact}
                     hasUiArtifact={hasUiArtifact}
                     onAction={applyWorkflowAction}
@@ -1044,6 +1068,7 @@ export const AgentCompanyApp = () => {
       {showRoleDialog ? (
         <RoleConfigDialog
           busy={busy}
+          commandPresets={commandPresets}
           onClose={() => setShowRoleDialog(false)}
           onCreate={createRole}
           onDelete={removeRole}
@@ -1157,38 +1182,17 @@ const TeamGroup = ({
 
 /** Renders only the actions valid for the current lifecycle stage. */
 const WorkflowGate = ({
-  busy,
   hasArchitectureArtifact,
   hasUiArtifact,
   onAction,
   workflow,
 }: {
-  busy: boolean
   hasArchitectureArtifact: boolean
   hasUiArtifact: boolean
   onAction: (action: WorkflowAction) => Promise<void>
   workflow: ProjectWorkflowState
 }) => {
-  if (workflow.stage === 'requirements') {
-    return (
-      <section className="ac-gate">
-        <div>
-          <span className="ac-eyebrow">REQUIREMENT GATE</span>
-          <strong>需求已经聊清楚了吗？</strong>
-          <p>封板后规格仍留在规划流程，部门经理才能派给架构师与 UI 设计师。</p>
-        </div>
-        <button
-          type="button"
-          className="ac-button ac-button--primary"
-          disabled={busy}
-          onClick={() => void onAction('freeze_requirements')}
-        >
-          <Check size={15} />
-          封板需求
-        </button>
-      </section>
-    )
-  }
+  if (workflow.stage === 'requirements') return null
   if (workflow.stage === 'solution') {
     const ready = workflow.architectureStatus === 'approved' && workflow.uiStatus === 'approved'
     return (
@@ -1272,6 +1276,32 @@ const WorkflowGate = ({
     </section>
   )
 }
+
+/** Places requirement sealing directly below the PM's latest response instead of in the dock. */
+const RequirementFreezeGate = ({
+  busy,
+  onAction,
+}: {
+  busy: boolean
+  onAction: (action: WorkflowAction) => Promise<void>
+}) => (
+  <section className="ac-gate ac-gate--requirements-inline">
+    <div>
+      <span className="ac-eyebrow">REQUIREMENT GATE</span>
+      <strong>需求已经聊清楚了吗？</strong>
+      <p>封板后规格仍留在规划流程，部门经理才能派给架构师与 UI 设计师。</p>
+    </div>
+    <button
+      type="button"
+      className="ac-button ac-button--primary"
+      disabled={busy}
+      onClick={() => void onAction('freeze_requirements')}
+    >
+      <Check size={15} />
+      封板需求
+    </button>
+  </section>
+)
 
 /** A single user confirmation gate tied to a reported real artifact. */
 const ApprovalGate = ({
