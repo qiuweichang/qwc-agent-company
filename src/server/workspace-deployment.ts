@@ -7,7 +7,8 @@ import { dirname, join } from 'node:path'
 import type { ProjectDeployment } from '../shared/project-operations.js'
 
 interface DeploymentRecord extends ProjectDeployment {
-  backendPid: number
+  /** Absent when the delivered workspace is a frontend-only application. */
+  backendPid: number | null
   frontendPid: number
 }
 
@@ -19,6 +20,17 @@ interface PackageScriptInvocation {
   args: string[]
   executable: string
   workingDirectory: string
+}
+
+interface DeploymentCommands {
+  backendCommand: string
+  backendInvocation: PackageScriptInvocation | null
+  buildCommand: string
+  buildInvocation: PackageScriptInvocation | null
+  frontendCommand: string
+  frontendDirectory: string
+  frontendInvocation: PackageScriptInvocation
+  hasBackend: boolean
 }
 
 const deployments = new Map<string, DeploymentRecord>()
@@ -109,11 +121,14 @@ const packageScriptInvocation = (
   }
 }
 
-/** Detects conventional frontend/backend package scripts without executing project code. */
-const detectDeploymentCommands = async (workspacePath: string) => {
+/**
+ * Detects conventional frontend/backend package scripts without executing project code.
+ * A root Vite project is treated as a valid frontend-only delivery instead of inventing a backend.
+ */
+const detectDeploymentCommands = async (workspacePath: string): Promise<DeploymentCommands> => {
   const packageManager = await resolvePackageManager(workspacePath)
   const rootManifest = await readManifest(join(workspacePath, 'package.json'))
-  const frontendDirectory = (
+  const nestedFrontendDirectory = (
     await Promise.all(
       ['web', 'frontend', 'client'].map(async (directory) => ({
         directory,
@@ -121,9 +136,19 @@ const detectDeploymentCommands = async (workspacePath: string) => {
       }))
     )
   ).find((candidate) => candidate.exists)?.directory
-  const frontendManifest = frontendDirectory
-    ? await readManifest(join(workspacePath, frontendDirectory, 'package.json'))
-    : null
+  const rootViteConfig = (
+    await Promise.all(
+      ['vite.config.ts', 'vite.config.js', 'vite.config.mts', 'vite.config.mjs'].map(async (name) =>
+        fileExists(join(workspacePath, name))
+      )
+    )
+  ).some(Boolean)
+  const frontendDirectory = nestedFrontendDirectory ?? (rootViteConfig ? '.' : null)
+  const frontendManifest = nestedFrontendDirectory
+    ? await readManifest(join(workspacePath, nestedFrontendDirectory, 'package.json'))
+    : rootViteConfig
+      ? rootManifest
+      : null
 
   const backendScript = rootManifest?.scripts?.start
     ? 'start'
@@ -133,16 +158,17 @@ const detectDeploymentCommands = async (workspacePath: string) => {
         ? 'server'
         : null
   const frontendScript = frontendManifest?.scripts?.dev ? 'dev' : null
-  if (!backendScript) throw new Error('未检测到后端 start、dev:server 或 server 脚本')
   if (!frontendDirectory || !frontendScript)
-    throw new Error('未检测到 web/frontend/client 的 dev 脚本')
+    throw new Error('未检测到根目录或 web/frontend/client 的 Vite dev 脚本')
 
   const buildCommand = rootManifest?.scripts?.build
     ? packageScriptCommand(packageManager, 'build')
     : ''
   return {
-    backendCommand: packageScriptCommand(packageManager, backendScript),
-    backendInvocation: packageScriptInvocation(packageManager, workspacePath, backendScript),
+    backendCommand: backendScript ? packageScriptCommand(packageManager, backendScript) : '',
+    backendInvocation: backendScript
+      ? packageScriptInvocation(packageManager, workspacePath, backendScript)
+      : null,
     buildCommand,
     buildInvocation: rootManifest?.scripts?.build
       ? packageScriptInvocation(packageManager, workspacePath, 'build')
@@ -161,6 +187,7 @@ const detectDeploymentCommands = async (workspacePath: string) => {
       ['--', '--config', 'vite.agent-company.config.ts', '--host', '127.0.0.1', '--strictPort']
     ),
     frontendDirectory,
+    hasBackend: Boolean(backendScript),
   }
 }
 
@@ -203,6 +230,7 @@ const buildDeployScript = (input: {
   backendCommand: string
   buildCommand: string
   frontendCommand: string
+  hasBackend: boolean
 }) => `param(
   [int]$FrontendPort = 0,
   [int]$BackendPort = 0,
@@ -212,7 +240,12 @@ const buildDeployScript = (input: {
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = Split-Path -Parent $PSScriptRoot
 $PortDetector = Join-Path $PSScriptRoot 'find-free-port.ps1'
-$BackendPort = [int](& $PortDetector -PreferredPort $BackendPort)
+$HasBackend = ${input.hasBackend ? '$true' : '$false'}
+if ($HasBackend) {
+  $BackendPort = [int](& $PortDetector -PreferredPort $BackendPort)
+} else {
+  $BackendPort = 0
+}
 $FrontendPort = [int](& $PortDetector -PreferredPort $FrontendPort -ExcludedPort $BackendPort)
 
 $env:PORT = [string]$BackendPort
@@ -256,8 +289,10 @@ function Wait-LocalPort {
 $Backend = $null
 $Frontend = $null
 try {
-  $Backend = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/s', '/c', $BackendCommand) -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $LogDirectory 'backend.log') -RedirectStandardError (Join-Path $LogDirectory 'backend.error.log')
-  Wait-LocalPort -Port $BackendPort -Process $Backend -Label 'Backend'
+  if ($HasBackend) {
+    $Backend = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/s', '/c', $BackendCommand) -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $LogDirectory 'backend.log') -RedirectStandardError (Join-Path $LogDirectory 'backend.error.log')
+    Wait-LocalPort -Port $BackendPort -Process $Backend -Label 'Backend'
+  }
   $Frontend = Start-Process -FilePath 'cmd.exe' -ArgumentList @('/d', '/s', '/c', $FrontendCommand) -WorkingDirectory $ProjectRoot -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $LogDirectory 'frontend.log') -RedirectStandardError (Join-Path $LogDirectory 'frontend.error.log')
   Wait-LocalPort -Port $FrontendPort -Process $Frontend -Label 'Frontend'
 } catch {
@@ -267,14 +302,21 @@ try {
 }
 
 @{
-  backend_pid = $Backend.Id
+  backend_pid = if ($null -ne $Backend) { $Backend.Id } else { $null }
   backend_port = $BackendPort
   frontend_pid = $Frontend.Id
   frontend_port = $FrontendPort
 } | ConvertTo-Json -Compress
 `
 
-const buildViteDeploymentConfig = (baseConfigName: string) => `import { mergeConfig } from 'vite'
+/** Builds the temporary Vite config, adding an API proxy only when a backend was detected. */
+const buildViteDeploymentConfig = (baseConfigName: string, hasBackend: boolean) => {
+  const proxyConfig = hasBackend
+    ? "    proxy: { '/api': { target: `http://127.0.0.1:" +
+      '$' +
+      '{backendPort}`, changeOrigin: false } },'
+    : ''
+  return `import { mergeConfig } from 'vite'
 import baseConfig from './${baseConfigName}'
 
 const resolvedBase =
@@ -289,10 +331,11 @@ export default mergeConfig(resolvedBase, {
     host: '127.0.0.1',
     port: frontendPort,
     strictPort: true,
-    proxy: { '/api': { target: \`http://127.0.0.1:\${backendPort}\`, changeOrigin: false } },
+${proxyConfig}
   },
 })
 `
+}
 
 /** Writes the Windows one-click deployment assets required by every delivered project. */
 export const ensureWindowsDeploymentScripts = async (workspacePath: string) => {
@@ -314,7 +357,7 @@ export const ensureWindowsDeploymentScripts = async (workspacePath: string) => {
   if (!baseConfigName) throw new Error('前端项目缺少 Vite 配置，无法注入随机后端端口代理')
   await writeFile(
     join(workspacePath, commands.frontendDirectory, 'vite.agent-company.config.ts'),
-    buildViteDeploymentConfig(baseConfigName),
+    buildViteDeploymentConfig(baseConfigName, commands.hasBackend),
     'utf8'
   )
   return join(scriptsDirectory, 'deploy-windows.ps1')
@@ -419,7 +462,7 @@ const isProcessRunning = (pid: number) => {
   }
 }
 
-/** Generates project-local scripts, assigns free ports and launches both application halves. */
+/** Generates project-local scripts, assigns free ports and launches every detected service. */
 export const startWorkspaceDeployment = async (
   workspaceId: string,
   workspacePath: string,
@@ -427,14 +470,24 @@ export const startWorkspaceDeployment = async (
 ): Promise<ProjectDeployment> => {
   if (process.platform !== 'win32') throw new Error('当前一键部署仅支持 Windows')
   const current = deployments.get(workspaceId)
-  if (current && (isProcessRunning(current.backendPid) || isProcessRunning(current.frontendPid))) {
+  if (
+    current &&
+    ((current.backendPid !== null && isProcessRunning(current.backendPid)) ||
+      isProcessRunning(current.frontendPid))
+  ) {
     return current
   }
   await ensureWindowsDeploymentScripts(workspacePath)
   const commands = await detectDeploymentCommands(workspacePath)
   const detectorPath = join(workspacePath, 'scripts', 'find-free-port.ps1')
-  const backendPort = await findDeploymentPort(detectorPath, input.backendPort ?? 0)
-  const frontendPort = await findDeploymentPort(detectorPath, input.frontendPort ?? 0, backendPort)
+  const backendPort = commands.hasBackend
+    ? await findDeploymentPort(detectorPath, input.backendPort ?? 0)
+    : null
+  const frontendPort = await findDeploymentPort(
+    detectorPath,
+    input.frontendPort ?? 0,
+    backendPort ?? 0
+  )
   const logsDirectory = join(workspacePath, '.agent-company', 'logs')
   await mkdir(logsDirectory, { recursive: true })
   if (commands.buildInvocation) {
@@ -446,25 +499,27 @@ export const startWorkspaceDeployment = async (
   }
   const env = {
     ...process.env,
-    BACKEND_PORT: String(backendPort),
+    BACKEND_PORT: backendPort === null ? '' : String(backendPort),
     FRONTEND_PORT: String(frontendPort),
-    NEXT_PUBLIC_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
+    NEXT_PUBLIC_API_BASE_URL: backendPort === null ? '' : `http://127.0.0.1:${backendPort}`,
     // Agent Company owns the user-facing deployment link. Suppress project-level
     // auto-open hooks so a deployment never creates surprise browser windows.
     NO_BROWSER: '1',
-    PORT: String(backendPort),
-    REACT_APP_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
-    VITE_API_BASE_URL: `http://127.0.0.1:${backendPort}`,
+    PORT: backendPort === null ? '' : String(backendPort),
+    REACT_APP_API_BASE_URL: backendPort === null ? '' : `http://127.0.0.1:${backendPort}`,
+    VITE_API_BASE_URL: backendPort === null ? '' : `http://127.0.0.1:${backendPort}`,
   }
-  const backend = spawnDeploymentService(
-    commands.backendInvocation,
-    env,
-    join(logsDirectory, 'backend.log'),
-    join(logsDirectory, 'backend.error.log')
-  )
+  const backend = commands.backendInvocation
+    ? spawnDeploymentService(
+        commands.backendInvocation,
+        env,
+        join(logsDirectory, 'backend.log'),
+        join(logsDirectory, 'backend.error.log')
+      )
+    : null
   let frontend: ReturnType<typeof spawn> | null = null
   try {
-    await waitForServicePort(backendPort, backend, 'Backend')
+    if (backend && backendPort !== null) await waitForServicePort(backendPort, backend, 'Backend')
     frontend = spawnDeploymentService(
       commands.frontendInvocation,
       env,
@@ -474,14 +529,15 @@ export const startWorkspaceDeployment = async (
     await waitForServicePort(frontendPort, frontend, 'Frontend')
   } catch (error) {
     if (frontend?.pid) stopProcessTree(frontend.pid)
-    if (backend.pid) stopProcessTree(backend.pid)
+    if (backend?.pid) stopProcessTree(backend.pid)
     throw error
   }
-  if (!backend.pid || !frontend.pid) throw new Error('部署进程没有返回有效 PID')
+  if ((commands.hasBackend && !backend?.pid) || !frontend.pid)
+    throw new Error('部署进程没有返回有效 PID')
   const deployment: DeploymentRecord = {
-    backendPid: backend.pid,
+    backendPid: backend?.pid ?? null,
     backendPort,
-    backendUrl: `http://127.0.0.1:${backendPort}`,
+    backendUrl: backendPort === null ? null : `http://127.0.0.1:${backendPort}`,
     frontendPid: frontend.pid,
     frontendPort,
     frontendUrl: `http://127.0.0.1:${frontendPort}`,
@@ -498,7 +554,8 @@ export const getWorkspaceDeployment = (workspaceId: string): ProjectDeployment |
   const deployment = deployments.get(workspaceId)
   if (!deployment) return null
   const status =
-    isProcessRunning(deployment.backendPid) && isProcessRunning(deployment.frontendPid)
+    (deployment.backendPid === null || isProcessRunning(deployment.backendPid)) &&
+    isProcessRunning(deployment.frontendPid)
       ? 'running'
       : 'stopped'
   deployment.status = status
@@ -510,6 +567,7 @@ export const stopWorkspaceDeployment = (workspaceId: string): ProjectDeployment 
   const deployment = deployments.get(workspaceId)
   if (!deployment) return null
   for (const pid of [deployment.frontendPid, deployment.backendPid]) {
+    if (pid === null) continue
     try {
       stopProcessTree(pid)
     } catch (error) {

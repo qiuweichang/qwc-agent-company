@@ -38,6 +38,18 @@ const createDeployableWorkspace = () => {
   return workspacePath
 }
 
+/** Creates the root-level Vite shape produced by frontend-only project workflows. */
+const createFrontendOnlyWorkspace = () => {
+  const workspacePath = mkdtempSync(join(tmpdir(), 'agent-company-frontend-only-'))
+  tempDirs.push(workspacePath)
+  writeFileSync(
+    join(workspacePath, 'package.json'),
+    JSON.stringify({ scripts: { build: 'vite build', dev: 'vite' } })
+  )
+  writeFileSync(join(workspacePath, 'vite.config.ts'), 'export default {}\n')
+  return workspacePath
+}
+
 describe('project operation routes', () => {
   test('renames projects and exposes role-specific member plan progress', async () => {
     const workspacePath = createDeployableWorkspace()
@@ -151,5 +163,18 @@ describe('project operation routes', () => {
     expect(deploy).toContain('-WindowStyle Hidden')
     expect(vite).toContain("proxy: { '/api'")
     expect(vite).toContain('process.env.BACKEND_PORT')
+  })
+
+  test('writes a frontend-only deployment without requiring or proxying a backend', async () => {
+    const workspacePath = createFrontendOnlyWorkspace()
+
+    await ensureWindowsDeploymentScripts(workspacePath)
+
+    const deploy = readFileSync(join(workspacePath, 'scripts', 'deploy-windows.ps1'), 'utf8')
+    const vite = readFileSync(join(workspacePath, 'vite.agent-company.config.ts'), 'utf8')
+    expect(deploy).toContain('$HasBackend = $false')
+    expect(deploy).toContain('$BackendPort = 0')
+    expect(vite).not.toContain("proxy: { '/api'")
+    expect(vite).toContain('strictPort: true')
   })
 })

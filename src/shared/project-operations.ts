@@ -38,8 +38,10 @@ export interface ArchivedProjectFile {
 
 /** Local deployment state for one delivered project. */
 export interface ProjectDeployment {
-  backendPort: number
-  backendUrl: string
+  /** Null for static or frontend-only projects that do not expose a local backend service. */
+  backendPort: number | null
+  /** Null for static or frontend-only projects; callers must not render a backend link then. */
+  backendUrl: string | null
   frontendPort: number
   frontendUrl: string
   launchedAt: number

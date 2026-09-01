@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ProjectDeployment } from '../../../src/shared/project-operations.js'
 import { deployProject, getProjectDeployment, stopProjectDeployment } from '../api.js'
 
-/** Manages one delivered project's local Windows frontend/backend deployment. */
+/** Manages one delivered project's local Windows deployment, including frontend-only workspaces. */
 export const DeploymentDialog = ({
   onClose,
   workspaceId,
@@ -35,7 +35,7 @@ export const DeploymentDialog = ({
     }
   }, [workspaceId])
 
-  /** Generates scripts and starts both services, using random free ports when fields are blank. */
+  /** Generates scripts and starts every detected service, using random free ports when blank. */
   const deploy = async () => {
     setBusy(true)
     try {
@@ -72,7 +72,7 @@ export const DeploymentDialog = ({
         <header>
           <div>
             <h2>本地部署</h2>
-            <p>生成 Windows 一键部署脚本，并让前端代理准确指向本次后端端口。</p>
+            <p>生成 Windows 一键部署脚本，并按项目结构启动前端或前后端服务。</p>
           </div>
           <button type="button" className="ac-icon-button" onClick={onClose} aria-label="关闭">
             <X size={18} />
@@ -108,9 +108,13 @@ export const DeploymentDialog = ({
             <a href={deployment.frontendUrl} target="_blank" rel="noreferrer">
               前端 · {deployment.frontendUrl} <ExternalLink size={12} />
             </a>
-            <a href={deployment.backendUrl} target="_blank" rel="noreferrer">
-              后端 · {deployment.backendUrl} <ExternalLink size={12} />
-            </a>
+            {deployment.backendUrl ? (
+              <a href={deployment.backendUrl} target="_blank" rel="noreferrer">
+                后端 · {deployment.backendUrl} <ExternalLink size={12} />
+              </a>
+            ) : (
+              <span>纯前端项目 · 无需启动后端</span>
+            )}
           </section>
         ) : null}
         {error ? <p className="ac-form-error">{error}</p> : null}
