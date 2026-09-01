@@ -346,6 +346,24 @@ button {
 .ac-gate p { margin: 3px 0 0; color: var(--ac-muted); font-size: 10px; }
 .ac-gate--stack { display: block; background: #fff; }
 .ac-gate__title { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.ac-gate__title-actions { display: flex; align-items: center; gap: 8px; }
+.ac-gate__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--ac-border);
+  border-radius: 6px;
+  padding: 6px 9px;
+  color: var(--ac-muted);
+  background: #fff;
+  font-size: 10px;
+  cursor: pointer;
+}
+.ac-gate__toggle:hover { color: var(--ac-text); background: var(--ac-subtle); }
+.ac-gate__toggle svg { transition: transform 160ms ease; }
+.ac-gate__toggle svg.is-expanded { transform: rotate(180deg); }
+.ac-gate__summary { margin-top: 1px !important; }
+.ac-gate--stack.is-collapsed .ac-gate__title { margin-bottom: 0; }
 .ac-gate--complete { justify-content: flex-start; color: #087656; }
 
 .ac-approval-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #edf0f4; padding: 12px 0; }
@@ -700,6 +718,7 @@ button {
 }
 .ac-action-dock .ac-gate { max-width: 790px; margin: 0 auto 8px; padding: 10px 13px; }
 .ac-action-dock .ac-gate--stack { max-height: 230px; overflow-y: auto; }
+.ac-action-dock .ac-gate--stack.is-collapsed { max-height: none; overflow: hidden; }
 .ac-action-dock .ac-gate__title { margin-bottom: 5px; }
 .ac-action-dock .ac-approval-row { padding: 7px 0; }
 .ac-action-dock .ac-composer { max-width: 790px; margin: 0 auto; }

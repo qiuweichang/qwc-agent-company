@@ -1,6 +1,7 @@
 import {
   Archive,
   Check,
+  ChevronDown,
   Circle,
   FileCode2,
   LayoutDashboard,
@@ -1215,40 +1216,71 @@ const WorkflowGate = ({
   onAction: (action: WorkflowAction) => Promise<void>
   workflow: ProjectWorkflowState
 }) => {
+  // The expansion state belongs to the fixed action dock so users can reclaim
+  // conversation space without changing any workflow or approval state.
+  const [isSolutionGateExpanded, setIsSolutionGateExpanded] = useState(true)
+
   if (workflow.stage === 'requirements') return null
   if (workflow.stage === 'solution') {
     const ready = workflow.architectureStatus === 'approved' && workflow.uiStatus === 'approved'
+    const approvedCount = [workflow.architectureStatus, workflow.uiStatus].filter(
+      (status) => status === 'approved'
+    ).length
     return (
-      <section className="ac-gate ac-gate--stack">
+      <section
+        className={`ac-gate ac-gate--stack ${isSolutionGateExpanded ? '' : 'is-collapsed'}`}
+      >
         <div className="ac-gate__title">
           <div>
             <span className="ac-eyebrow">USER APPROVAL</span>
             <strong>方案确认门</strong>
           </div>
-          {ready ? (
+          <div className="ac-gate__title-actions">
+            {ready ? (
+              <button
+                type="button"
+                className="ac-button ac-button--primary"
+                onClick={() => void onAction('start_development')}
+              >
+                开启执行流程
+              </button>
+            ) : null}
             <button
               type="button"
-              className="ac-button ac-button--primary"
-              onClick={() => void onAction('start_development')}
+              className="ac-gate__toggle"
+              aria-controls="solution-approval-details"
+              aria-expanded={isSolutionGateExpanded}
+              onClick={() => setIsSolutionGateExpanded((current) => !current)}
             >
-              开启执行流程
+              <ChevronDown
+                aria-hidden="true"
+                className={isSolutionGateExpanded ? 'is-expanded' : ''}
+                size={14}
+              />
+              {isSolutionGateExpanded ? '收起' : '展开'}
             </button>
-          ) : null}
+          </div>
         </div>
-        <ApprovalGate
-          title="架构方案"
-          available={hasArchitectureArtifact}
-          status={workflow.architectureStatus}
-          onApprove={() => onAction('approve_architecture')}
-          onRevise={() => onAction('request_architecture_revision')}
-        />
-        <ApprovalGate
-          title="UI 设计方案"
-          available={hasUiArtifact}
-          status={workflow.uiStatus}
-          onApprove={() => onAction('approve_ui')}
-          onRevise={() => onAction('request_ui_revision')}
-        />
+        {isSolutionGateExpanded ? (
+          <div id="solution-approval-details">
+            <ApprovalGate
+              title="架构方案"
+              available={hasArchitectureArtifact}
+              status={workflow.architectureStatus}
+              onApprove={() => onAction('approve_architecture')}
+              onRevise={() => onAction('request_architecture_revision')}
+            />
+            <ApprovalGate
+              title="UI 设计方案"
+              available={hasUiArtifact}
+              status={workflow.uiStatus}
+              onApprove={() => onAction('approve_ui')}
+              onRevise={() => onAction('request_ui_revision')}
+            />
+          </div>
+        ) : (
+          <p className="ac-gate__summary">已确认 {approvedCount}/2，展开后可查看方案状态。</p>
+        )}
       </section>
     )
   }
