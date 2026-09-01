@@ -129,6 +129,8 @@ describe('post-start input writer', () => {
     expect(manager.writeInput).toHaveBeenNthCalledWith(2, 'run-codex', '\r')
     vi.advanceTimersByTime(500)
     expect(manager.writeInput).toHaveBeenNthCalledWith(3, 'run-codex', '\r')
+    vi.advanceTimersByTime(1500)
+    expect(manager.writeInput).toHaveBeenNthCalledWith(4, 'run-codex', '\r')
   })
 
   test('waits for a fresh Codex prompt before writing a later message', () => {
@@ -144,16 +146,17 @@ describe('post-start input writer', () => {
     vi.advanceTimersByTime(300)
     vi.advanceTimersByTime(600)
     vi.advanceTimersByTime(500)
-    expect(manager.writeInput).toHaveBeenCalledTimes(3)
+    vi.advanceTimersByTime(1500)
+    expect(manager.writeInput).toHaveBeenCalledTimes(4)
 
     write('run-codex-fresh-prompt', 'follow-up task')
     vi.advanceTimersByTime(5000)
-    expect(manager.writeInput).toHaveBeenCalledTimes(3)
+    expect(manager.writeInput).toHaveBeenCalledTimes(4)
 
     output += '\nWorking\n❯ '
     vi.advanceTimersByTime(350)
     expect(manager.writeInput).toHaveBeenNthCalledWith(
-      4,
+      5,
       'run-codex-fresh-prompt',
       '\u001b[200~follow-up task\u001b[201~'
     )

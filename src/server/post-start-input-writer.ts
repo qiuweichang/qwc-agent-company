@@ -13,6 +13,7 @@ const PASTE_ACK_CHECK_INTERVAL_MS = 50
 const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
 const CODEX_SECOND_SUBMIT_DELAY_MS = 500
+const CODEX_FINAL_SUBMIT_RETRY_DELAY_MS = 1500
 const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
 const CLAUDE_TRUST_TIMEOUT_MS = 5000
 const CLAUDE_TRUST_POLL_INTERVAL_MS = 50
@@ -167,15 +168,23 @@ const submitPastedInteractiveInput = (
       return
     }
 
-    // Codex can use the first Enter to accept a large bracketed-paste block
-    // without submitting it. A delayed second Enter is a no-op if execution
-    // already started, but reliably moves an accepted block into Working state.
+    // Codex can use the first Enter to accept a large bracketed-paste block without submitting it.
+    // On Windows, a resumed TUI can also ignore the immediate confirmation while it renders the
+    // accepted block. Two bounded retries cover both states; Enter is harmless once Codex is busy.
     setTimeout(() => {
       try {
         writeIfRunWritable(agentManager, runId, '\r')
-      } finally {
-        onSubmitted()
+      } catch {
+        // The run may have exited after completing a very short task.
       }
+
+      setTimeout(() => {
+        try {
+          writeIfRunWritable(agentManager, runId, '\r')
+        } finally {
+          onSubmitted()
+        }
+      }, CODEX_FINAL_SUBMIT_RETRY_DELAY_MS)
     }, CODEX_SECOND_SUBMIT_DELAY_MS)
   }
 
