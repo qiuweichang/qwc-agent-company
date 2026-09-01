@@ -48,6 +48,7 @@ describe('agent run bootstrap', () => {
       args: ['resume', sessionId],
       resumedSessionId: sessionId,
     })
+    expect(bootstrap.startEnv.AGENT_COMPANY_NODE).toBe(process.execPath)
     expect(bootstrap.sessionCaptureSnapshot).toBeUndefined()
   })
 })

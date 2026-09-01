@@ -99,6 +99,9 @@ export const buildAgentRunBootstrap = (
       HIVE_AGENT_ID: agentId,
       HIVE_AGENT_TOKEN: '',
       AGENT_COMPANY_HOME,
+      // Windows batch shims lose reliable PATH lookup in some nested CLI shells.
+      // The team command uses this absolute Runtime path to report without spawning ambiguity.
+      AGENT_COMPANY_NODE: process.execPath,
       PATH: `${HIVE_BIN_DIR}${delimiter}${process.env.PATH ?? ''}`,
     },
   }
