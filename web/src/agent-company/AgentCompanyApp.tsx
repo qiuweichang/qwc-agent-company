@@ -67,8 +67,8 @@ import { DeploymentDialog } from './DeploymentDialog.js'
 import { type ContextMember, MemberContextDrawer } from './MemberContextDrawer.js'
 import { MessageJumpRail } from './MessageJumpRail.js'
 import {
-  parseProductChoicePrompt,
   ProductChoicePanel,
+  parseProductChoicePrompt,
   RequirementFreezeAction,
 } from './ProductChoicePanel.js'
 import { ProjectArchivePanel } from './ProjectArchivePanel.js'
@@ -1227,9 +1227,7 @@ const WorkflowGate = ({
       (status) => status === 'approved'
     ).length
     return (
-      <section
-        className={`ac-gate ac-gate--stack ${isSolutionGateExpanded ? '' : 'is-collapsed'}`}
-      >
+      <section className={`ac-gate ac-gate--stack ${isSolutionGateExpanded ? '' : 'is-collapsed'}`}>
         <div className="ac-gate__title">
           <div>
             <span className="ac-eyebrow">USER APPROVAL</span>

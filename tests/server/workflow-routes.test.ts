@@ -31,19 +31,16 @@ describe('project workflow routes', () => {
       const cookie = await getUiCookie(server.baseUrl)
       const workspace = server.store.createWorkspace(workspacePath, 'Police Dashboard')
 
-      const response = await fetch(
-        `${server.baseUrl}/api/workspaces/${workspace.id}/user-input`,
-        {
-          body: JSON.stringify({
-            freeze_requirements: true,
-            recipient: '产品经理',
-            text: '选择 B：分阶段接入',
-            thread: 'planning',
-          }),
-          headers: { 'content-type': 'application/json', cookie },
-          method: 'POST',
-        }
-      )
+      const response = await fetch(`${server.baseUrl}/api/workspaces/${workspace.id}/user-input`, {
+        body: JSON.stringify({
+          freeze_requirements: true,
+          recipient: '产品经理',
+          text: '选择 B：分阶段接入',
+          thread: 'planning',
+        }),
+        headers: { 'content-type': 'application/json', cookie },
+        method: 'POST',
+      })
 
       expect(response.status).toBe(202)
       const [dispatch] = server.store.listDispatches(workspace.id, { limit: 1 })

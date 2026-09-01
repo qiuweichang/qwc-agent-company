@@ -103,9 +103,7 @@ const formatListenError = (error: unknown, requestedPort: number) => {
   return error
 }
 
-export const runHiveCommand = async (
-  argv: string[]
-): Promise<RunHiveCommandResult> => {
+export const runHiveCommand = async (argv: string[]): Promise<RunHiveCommandResult> => {
   const port = parsePort(argv)
   const dataDir = resolveDataDir()
   const app = createApp({

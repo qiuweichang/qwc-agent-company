@@ -12,7 +12,13 @@ import {
 } from './role-templates.js'
 
 const BUILTIN_ROLES = [
-  ['orchestrator', DEPARTMENT_MANAGER_NAME, 'orchestrator', ORCHESTRATOR_ROLE_DESCRIPTION, 'claude'],
+  [
+    'orchestrator',
+    DEPARTMENT_MANAGER_NAME,
+    'orchestrator',
+    ORCHESTRATOR_ROLE_DESCRIPTION,
+    'claude',
+  ],
   ['product_manager', PRODUCT_MANAGER_NAME, 'custom', PRODUCT_MANAGER_ROLE_DESCRIPTION, 'claude'],
   ['architect', '架构师', 'custom', ARCHITECT_ROLE_DESCRIPTION, 'claude'],
   ['ui_designer', 'UI 设计师', 'custom', UI_DESIGNER_ROLE_DESCRIPTION, 'codex'],

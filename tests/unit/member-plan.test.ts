@@ -1,9 +1,8 @@
 import { describe, expect, test } from 'vitest'
-
-import type { AgentSummary } from '../../src/shared/types.js'
-import type { ProjectWorkflowState } from '../../src/shared/workflow-types.js'
 import type { DispatchRecord } from '../../src/server/dispatch-ledger-store.js'
 import { buildMemberPlan } from '../../src/server/member-plan.js'
+import type { AgentSummary } from '../../src/shared/types.js'
+import type { ProjectWorkflowState } from '../../src/shared/workflow-types.js'
 
 const architect: AgentSummary = {
   description: '负责架构设计',

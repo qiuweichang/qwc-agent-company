@@ -19,8 +19,8 @@
     "dev:web": "vite --config web/vite.config.ts",
     "build": "pnpm clean && tsc -p tsconfig.build.json && node scripts/prepare-build-artifacts.mjs && pnpm build:web",
     "build:web": "vite build --config web/vite.config.ts",
-    "check": "pnpm exec biome check .",
-    "format": "pnpm exec biome format --write .",
+    "check": "biome check .",
+    "format": "biome format --write .",
     "postinstall": "node scripts/fix-runtime-artifacts.mjs",
     "test": "vitest run",
     "test:watch": "vitest"

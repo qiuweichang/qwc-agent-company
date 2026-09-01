@@ -4,8 +4,7 @@ import type { ProjectWorkflowState } from '../shared/workflow-types.js'
 import type { DispatchRecord } from './dispatch-ledger-store.js'
 
 const PLAN_LINE_PREFIX = /^\s*(?:[-*•]\s+|\d{1,2}[.)、]\s*|计划项\s*\d{1,2}\s*[:：-]\s*)/
-const DISPLAY_PLAN_PATTERN =
-  /(?:^|\n)\s*(?:展示计划|计划标题|卡片计划)\s*[:：]\s*([^\r\n]{2,32})/u
+const DISPLAY_PLAN_PATTERN = /(?:^|\n)\s*(?:展示计划|计划标题|卡片计划)\s*[:：]\s*([^\r\n]{2,32})/u
 const HIVE_DISPATCH_PREFIX = /^\s*\[Hive\s+派单[^\r\n]*?\]\s*/u
 /** Hard display bound for member cards; detailed instructions remain available in context history. */
 const MAX_DISPLAY_PLAN_LENGTH = 20

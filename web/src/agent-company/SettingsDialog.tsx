@@ -60,7 +60,9 @@ export const SettingsDialog = ({
     try {
       const availableCount = await onDetectCli()
       setCliDetectionSummary(
-        availableCount > 0 ? `检测完成，可接入 ${availableCount} 个 CLI` : '检测完成，未发现可接入的 CLI'
+        availableCount > 0
+          ? `检测完成，可接入 ${availableCount} 个 CLI`
+          : '检测完成，未发现可接入的 CLI'
       )
     } catch {
       // The application-level error banner provides the actionable request failure.

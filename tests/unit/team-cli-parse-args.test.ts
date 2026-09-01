@@ -1,10 +1,6 @@
 import { describe, expect, test } from 'vitest'
 
-import {
-  normalizeTeamStdinContent,
-  parseCancelArgs,
-  parseReportArgs,
-} from '../../src/cli/team.js'
+import { normalizeTeamStdinContent, parseCancelArgs, parseReportArgs } from '../../src/cli/team.js'
 
 describe('normalizeTeamStdinContent', () => {
   test('preserves valid Chinese content and removes an optional UTF-8 byte-order mark', () => {

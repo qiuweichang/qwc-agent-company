@@ -13,16 +13,11 @@ export interface ProductChoicePrompt {
   options: ProductChoiceOption[]
 }
 
-const CHOICE_LINE_PATTERN =
-  /^\s*[-*•]\s*(?:\*\*)?([A-H]|\d{1,2})[.)、:：-]\s*(.+?)\s*$/iu
+const CHOICE_LINE_PATTERN = /^\s*[-*•]\s*(?:\*\*)?([A-H]|\d{1,2})[.)、:：-]\s*(.+?)\s*$/iu
 const REPLY_HINT_PATTERN = /(?:直接回复|请选择|回复.+即可|选择.+继续)/u
 
 /** Removes lightweight Markdown markers that are no longer needed inside native form controls. */
-const cleanChoiceText = (value: string) =>
-  value
-    .replaceAll('**', '')
-    .replaceAll('`', '')
-    .trim()
+const cleanChoiceText = (value: string) => value.replaceAll('**', '').replaceAll('`', '').trim()
 
 /** Splits an option into a concise title and its supporting explanation. */
 const splitChoiceText = (value: string) => {
@@ -95,8 +90,7 @@ export const ProductChoicePanel = ({
   const selected = prompt.options.find((option) => option.id === selectedId) ?? null
 
   /** Builds the concise product-manager reply shared by both confirmation paths. */
-  const buildSelectionResponse = () =>
-    selected ? `选择 ${selected.id}：${selected.label}` : null
+  const buildSelectionResponse = () => (selected ? `选择 ${selected.id}：${selected.label}` : null)
 
   /** Converts the selected card into the short, unambiguous reply expected by the CLI agent. */
   const confirmSelection = async () => {
