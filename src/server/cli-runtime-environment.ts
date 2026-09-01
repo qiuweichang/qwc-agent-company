@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 
 /** Finds an environment value without losing Windows' case-insensitive key semantics. */
 const readEnvironmentValue = (
@@ -51,13 +51,31 @@ const listKnownWindowsCliDirectories = (env: NodeJS.ProcessEnv): string[] => {
 }
 
 /**
+ * Returns directories required by npm-generated Windows CLI shims. In particular,
+ * Codex may resolve to `codex.cmd`, whose first command is `node`; using the active
+ * Runtime executable directory prevents a stale desktop PATH from breaking that shim.
+ */
+const listRequiredWindowsRuntimeDirectories = (runtimeExecutablePath: string): string[] => {
+  const runtimeDirectory = dirname(runtimeExecutablePath)
+  return existsSync(runtimeDirectory) ? [runtimeDirectory] : []
+}
+
+/**
  * Builds the environment shared by CLI availability checks and real PTY launches.
- * Explicit PATH overrides remain authoritative; otherwise Windows' known local CLI
- * directories are appended so detection and execution cannot disagree.
+ * Explicit PATH overrides remain authoritative for user-selected tools. The active
+ * Node directory is still appended on Windows because npm CLI shims require it;
+ * otherwise known local CLI directories are appended so detection and execution
+ * cannot disagree.
+ *
+ * @param inputEnv Per-agent environment overrides merged over the Runtime environment.
+ * @param platform Target PTY platform; injectable so Windows behavior can be tested elsewhere.
+ * @param runtimeExecutablePath Node executable currently hosting the Runtime process.
+ * @returns A normalized environment safe to pass to command detection and the real PTY.
  */
 export const createCliRuntimeEnvironment = (
   inputEnv?: NodeJS.ProcessEnv,
-  platform: NodeJS.Platform = process.platform
+  platform: NodeJS.Platform = process.platform,
+  runtimeExecutablePath: string = process.execPath
 ): NodeJS.ProcessEnv => {
   const env = { ...process.env }
   const inputHasPath = Object.keys(inputEnv ?? {}).some((key) => key.toLowerCase() === 'path')
@@ -70,6 +88,12 @@ export const createCliRuntimeEnvironment = (
     const currentPath = readEnvironmentValue(env, 'PATH', platform) ?? ''
     const pathEntries = currentPath.split(';').filter(Boolean)
     const comparableEntries = new Set(pathEntries.map((entry) => entry.toLowerCase()))
+
+    for (const directory of listRequiredWindowsRuntimeDirectories(runtimeExecutablePath)) {
+      if (comparableEntries.has(directory.toLowerCase())) continue
+      pathEntries.push(directory)
+      comparableEntries.add(directory.toLowerCase())
+    }
 
     if (!inputHasPath) {
       for (const directory of listKnownWindowsCliDirectories(env)) {
