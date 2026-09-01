@@ -16,6 +16,7 @@ describe('ORCHESTRATOR_REMINDER_TAIL', () => {
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('Hive Department Manager')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team send "<worker-name>" "<task>"')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team cancel --dispatch <id> "<reason>"')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('展示计划：<6–16 个字的简短任务名>')
   })
 
   test('forbids the CLI built-in subagent escape hatch', () => {
@@ -69,6 +70,7 @@ describe('buildProtocolDoc', () => {
     expect(doc).toContain('## `team` CLI — department manager')
     expect(doc).toContain('## `team` CLI — worker')
     expect(doc).toContain('team cancel --dispatch <id> "<reason>"')
+    expect(doc).toContain('展示计划：<6–16 个字的简短任务名>')
   })
 
   test('mentions the .hive/PROTOCOL.md cat-recover path explicitly', () => {
