@@ -641,6 +641,12 @@ button {
 .ac-settings-content > section + section { padding-top: 21px; }
 .ac-settings-content h3 { margin: 0; font-size: 13px; }
 .ac-settings-content > section > p { margin: 5px 0 13px; color: var(--ac-muted); font-size: 10px; }
+.ac-settings-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 13px; }
+.ac-settings-section-heading p { margin: 5px 0 0; color: var(--ac-muted); font-size: 10px; }
+.ac-cli-detect-button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+.ac-cli-detect-button .is-spinning { animation: ac-cli-spin .8s linear infinite; }
+.ac-cli-detection-summary { display: flex; align-items: center; gap: 6px; margin: 10px 0 0 !important; color: #0b8f6a !important; }
+@keyframes ac-cli-spin { to { transform: rotate(360deg); } }
 .ac-integration-state { display: grid; grid-template-columns: auto auto 1fr; align-items: center; gap: 8px; border: 1px solid #f0d5a8; border-radius: 8px; padding: 9px 10px; background: #fffbf2; }
 .ac-integration-state.is-ready { border-color: #bfe7d8; background: #f1fbf7; }
 .ac-integration-state strong { font-size: 10px; }

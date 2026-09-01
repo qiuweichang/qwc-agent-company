@@ -1,4 +1,4 @@
-import { CheckCircle2, KeyRound, PlugZap, X } from 'lucide-react'
+import { CheckCircle2, KeyRound, PlugZap, RefreshCw, X } from 'lucide-react'
 import { useState } from 'react'
 
 import type { CommandPreset, StitchConfigurationInput, StitchStatus } from '../api.js'
@@ -7,6 +7,7 @@ interface SettingsDialogProps {
   busy: boolean
   commandPresets: CommandPreset[]
   onClose: () => void
+  onDetectCli: () => Promise<number>
   onSaveStitch: (input: StitchConfigurationInput) => Promise<void>
   stitchStatus: StitchStatus
 }
@@ -16,12 +17,17 @@ export const SettingsDialog = ({
   busy,
   commandPresets,
   onClose,
+  onDetectCli,
   onSaveStitch,
   stitchStatus,
 }: SettingsDialogProps) => {
   const [endpoint, setEndpoint] = useState(stitchStatus.endpointOrigin ?? '')
   const [apiKey, setApiKey] = useState('')
   const [saved, setSaved] = useState(false)
+  /** Tracks the manual discovery request independently from unrelated settings saves. */
+  const [detectingCli, setDetectingCli] = useState(false)
+  /** Keeps the latest successful discovery result visible without changing preset data. */
+  const [cliDetectionSummary, setCliDetectionSummary] = useState<string | null>(null)
 
   /** Saves a credential update while leaving the existing secret untouched when the field is blank. */
   const save = async () => {
@@ -44,6 +50,22 @@ export const SettingsDialog = ({
       setApiKey('')
     } catch {
       // Preserve the entered values so the user can correct a failed request without retyping.
+    }
+  }
+
+  /** Re-runs Runtime-side CLI discovery and reports how many bases can be launched. */
+  const detectCli = async () => {
+    setDetectingCli(true)
+    setCliDetectionSummary(null)
+    try {
+      const availableCount = await onDetectCli()
+      setCliDetectionSummary(
+        availableCount > 0 ? `检测完成，可接入 ${availableCount} 个 CLI` : '检测完成，未发现可接入的 CLI'
+      )
+    } catch {
+      // The application-level error banner provides the actionable request failure.
+    } finally {
+      setDetectingCli(false)
     }
   }
 
@@ -124,8 +146,21 @@ export const SettingsDialog = ({
             </section>
 
             <section>
-              <h3>CLI 基座</h3>
-              <p>成员头像与上下文均按实际启动的 CLI 类型显示。</p>
+              <div className="ac-settings-section-heading">
+                <div>
+                  <h3>CLI 基座</h3>
+                  <p>成员头像与上下文均按实际启动的 CLI 类型显示。</p>
+                </div>
+                <button
+                  type="button"
+                  className="ac-button ac-cli-detect-button"
+                  disabled={busy || detectingCli}
+                  onClick={detectCli}
+                >
+                  <RefreshCw size={14} className={detectingCli ? 'is-spinning' : ''} />
+                  {detectingCli ? '正在检测' : '检测 CLI'}
+                </button>
+              </div>
               <div className="ac-cli-dependency-list">
                 {commandPresets.map((preset) => (
                   <div key={preset.id}>
@@ -140,6 +175,11 @@ export const SettingsDialog = ({
                   </div>
                 ))}
               </div>
+              {cliDetectionSummary ? (
+                <p className="ac-cli-detection-summary" aria-live="polite">
+                  <CheckCircle2 size={13} /> {cliDetectionSummary}
+                </p>
+              ) : null}
             </section>
 
             <section>

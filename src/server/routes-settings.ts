@@ -1,4 +1,5 @@
 import { resolveCommandPath } from './agent-command-resolver.js'
+import { createCliRuntimeEnvironment } from './cli-runtime-environment.js'
 import { getRequiredParam, readJsonBody, route, sendJson } from './route-helpers.js'
 import type { RouteDefinition } from './route-types.js'
 import type { SessionIdCaptureConfig } from './session-capture.js'
@@ -37,7 +38,7 @@ const serializeCommandPreset = (preset: {
   let available = false
   try {
     if (preset.command.trim()) {
-      resolveCommandPath(preset.command, process.cwd(), { ...process.env, ...preset.env })
+      resolveCommandPath(preset.command, process.cwd(), createCliRuntimeEnvironment(preset.env))
       available = true
     }
   } catch {

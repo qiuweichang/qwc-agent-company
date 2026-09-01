@@ -495,6 +495,25 @@ export const AgentCompanyApp = () => {
   }
 
   /**
+   * Re-runs backend CLI discovery so newly installed Codex or Claude commands become
+   * selectable without reloading the page. Returns the launchable preset count.
+   */
+  const detectCliDependencies = async () => {
+    setBusy(true)
+    try {
+      const detectedPresets = await listCommandPresets()
+      setCommandPresets(detectedPresets)
+      setError(null)
+      return detectedPresets.filter((preset) => preset.available).length
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+      throw reason
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  /**
    * Persists one user response for the requested recipient and mirrors it locally
    * so both composer replies and structured choices share identical semantics.
    * Returns true only when Runtime accepts the message.
@@ -1017,6 +1036,7 @@ export const AgentCompanyApp = () => {
           busy={busy}
           commandPresets={commandPresets}
           onClose={() => setShowSettingsDialog(false)}
+          onDetectCli={detectCliDependencies}
           onSaveStitch={saveStitch}
           stitchStatus={stitchStatus}
         />

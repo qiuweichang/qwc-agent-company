@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { spawn } from 'node-pty'
 import { resolveSpawnCommand } from './agent-command-resolver.js'
 import { attachAgentPty, toAgentRunSnapshot } from './agent-manager-support.js'
+import { createCliRuntimeEnvironment } from './cli-runtime-environment.js'
 import { createPtyOutputBus, type PtyOutputBus } from './pty-output-bus.js'
 
 type RunStatus = 'starting' | 'running' | 'exited' | 'error'
@@ -60,22 +61,7 @@ const createRunId = () => randomUUID()
 export const createSpawnEnv = (
   inputEnv?: NodeJS.ProcessEnv,
   platform: NodeJS.Platform = process.platform
-): NodeJS.ProcessEnv => {
-  const env = { ...process.env }
-  for (const [key, value] of Object.entries(inputEnv ?? {})) {
-    if (platform === 'win32') {
-      const duplicateKey = Object.keys(env).find(
-        (existingKey) => existingKey !== key && existingKey.toLowerCase() === key.toLowerCase()
-      )
-      if (duplicateKey) delete env[duplicateKey]
-    }
-    env[key] = value
-  }
-  for (const key of Object.keys(env)) {
-    if (env[key] === undefined) delete env[key]
-  }
-  return env
-}
+): NodeJS.ProcessEnv => createCliRuntimeEnvironment(inputEnv, platform)
 
 export const createAgentManager = ({
   ptyOutputBus = createPtyOutputBus(),
