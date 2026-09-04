@@ -4,6 +4,7 @@ import { BadRequestError, ConflictError } from './http-errors.js'
 import { autostartOrchestrator } from './orchestrator-autostart.js'
 import { getRequiredParam, readJsonBody, route, sendJson } from './route-helpers.js'
 import type { RouteDefinition } from './route-types.js'
+import { mergeReportedArtifactPaths } from './reported-artifact-paths.js'
 import { requireUiTokenFromRequest } from './ui-auth-helpers.js'
 import { getOrchestratorId } from './workspace-store-support.js'
 
@@ -77,6 +78,7 @@ export const workflowRoutes: RouteDefinition[] = [
         workspaceId,
         requestedThread as (typeof workflowThreads)[number]
       )
+      const workspacePath = store.getWorkspaceSnapshot(workspaceId).summary.path
       sendJson(
         response,
         200,
@@ -84,7 +86,9 @@ export const workflowRoutes: RouteDefinition[] = [
           actor_id: entry.actorId,
           actor_name: entry.actorName,
           actor_role: entry.actorRole,
-          artifacts: withoutInternalDemoArtifacts(entry.artifacts),
+          artifacts: withoutInternalDemoArtifacts(
+            mergeReportedArtifactPaths(workspacePath, entry.artifacts, entry.text)
+          ),
           created_at: entry.createdAt,
           id: entry.id,
           recipient_name: entry.recipientName ?? null,

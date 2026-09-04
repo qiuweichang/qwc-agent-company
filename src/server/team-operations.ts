@@ -1,5 +1,6 @@
 import { DEPARTMENT_MANAGER_NAME } from '../shared/agent-company-labels.js'
 import type { WorkflowThread } from '../shared/workflow-types.js'
+import { mergeReportedArtifactPaths } from './reported-artifact-paths.js'
 import type { AgentRuntime } from './agent-runtime.js'
 import type { DispatchRecord } from './dispatch-ledger-store.js'
 import { ConflictError } from './http-errors.js'
@@ -261,7 +262,12 @@ export const createTeamOperations = ({
     },
     statusTask(workspaceId: string, workerId: string, input: StatusTaskInput = {}) {
       const text = input.text ?? ''
-      const artifacts = input.artifacts ?? []
+      const workspacePath = workspaceStore.getWorkspaceSnapshot(workspaceId).summary.path
+      const artifacts = mergeReportedArtifactPaths(
+        workspacePath,
+        input.artifacts ?? [],
+        text
+      )
       const worker = workspaceStore.getWorker(workspaceId, workerId)
       const messageHandle = insertMessage(
         createStatusMessage(workspaceId, workerId, text, artifacts, getActiveThread(workspaceId))
@@ -289,7 +295,12 @@ export const createTeamOperations = ({
     reportTask(workspaceId: string, workerId: string, input: ReportTaskInput = {}) {
       const text = input.text ?? ''
       const status = input.status
-      const artifacts = input.artifacts ?? []
+      const workspacePath = workspaceStore.getWorkspaceSnapshot(workspaceId).summary.path
+      const artifacts = mergeReportedArtifactPaths(
+        workspacePath,
+        input.artifacts ?? [],
+        text
+      )
       const worker = workspaceStore.getWorker(workspaceId, workerId)
       const openDispatch = findOpenDispatch(workspaceId, workerId, input.dispatchId)
       if (!openDispatch && input.dispatchId) {

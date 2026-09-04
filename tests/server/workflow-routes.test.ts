@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -94,9 +94,15 @@ describe('project workflow routes', () => {
         text: '架构演示图已生成',
       })
       await server.store.dispatchTask(workspace.id, designer.id, '输出 UI 方案')
+      mkdirSync(join(workspacePath, 'docs', 'design'), { recursive: true })
+      writeFileSync(
+        join(workspacePath, 'docs', 'design', 'student-admin.html'),
+        '<!doctype html><title>Student admin design</title>',
+        'utf8'
+      )
       server.store.reportTask(workspace.id, designer.id, {
         artifacts: ['docs/design/student-admin.png'],
-        text: '桌面 UI 设计图已生成',
+        text: '桌面 UI 设计图已生成：docs/design/student-admin.html',
       })
 
       expect(
@@ -137,7 +143,10 @@ describe('project workflow routes', () => {
           }),
           expect.objectContaining({
             actor_name: 'UI 设计师',
-            artifacts: ['docs/design/student-admin.png'],
+            artifacts: expect.arrayContaining([
+              'docs/design/student-admin.png',
+              'docs/design/student-admin.html',
+            ]),
           }),
         ])
       )
