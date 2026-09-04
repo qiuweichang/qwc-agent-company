@@ -15,10 +15,13 @@ const PASTE_ACK_TIMEOUT_MS = 3000
 const CODEX_SECOND_SUBMIT_DELAY_MS = 500
 const CODEX_FINAL_SUBMIT_RETRY_DELAY_MS = 1500
 const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
-const CLAUDE_TRUST_TIMEOUT_MS = 5000
-const CLAUDE_TRUST_POLL_INTERVAL_MS = 50
+// Cold Windows starts can take several seconds before either CLI paints its trust menu.
+const CLI_TRUST_TIMEOUT_MS = 15000
+const CLI_TRUST_POLL_INTERVAL_MS = 50
 const CLAUDE_TRUST_MARKER = 'Yes,Itrustthisfolder'
 const CLAUDE_BYPASS_MARKER = 'Yes,Iaccept'
+const CODEX_TRUST_MARKER = 'Doyoutrustthecontentsofthisdirectory?'
+const CODEX_TRUST_CONFIRMATION = '1.Yes,continue'
 const ANSI_CSI_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\[[0-9;?]*[a-zA-Z]`, 'g')
 const ANSI_OSC_PATTERN = new RegExp(`${String.fromCharCode(0x1b)}\\][^\\u0007]*\\u0007`, 'g')
 
@@ -75,6 +78,7 @@ export const hasBracketedPasteAcknowledgement = (output: string, baselineLength:
   /\[Pasted text #\d+/u.test(output.slice(baselineLength))
 
 const isClaudeCommand = (command: string) => getCommandName(command) === 'claude'
+const isCodexCommand = (command: string) => getCommandName(command) === 'codex'
 const usesBracketedPaste = (command: string) =>
   COMMANDS_WITH_BRACKETED_PASTE.has(getCommandName(command))
 const canTimeoutBeforePromptReady = (command: string) => getCommandName(command) !== 'gemini'
@@ -94,19 +98,19 @@ const writeIfRunWritable = (agentManager: AgentManager, runId: string, text: str
 }
 
 /**
- * Confirms Claude's one-time workspace trust prompt for the exact local folder
- * the user selected in Agent Company. Startup guidance waits for the normal
- * prompt after this confirmation so it cannot be pasted into the safety menu.
+ * Confirms a supported CLI's one-time workspace trust prompt for the exact local
+ * folder the user selected in Agent Company. Startup guidance waits for the normal
+ * prompt after confirmation so it cannot be pasted into a safety menu.
  */
 export const prepareInteractiveAgentRun = async (
   agentManager: AgentManager,
   runId: string,
   command: string
 ): Promise<void> => {
-  if (!isClaudeCommand(command)) return
+  if (!isClaudeCommand(command) && !isCodexCommand(command)) return
   const startedAt = Date.now()
   let inspectedOutputLength = 0
-  while (Date.now() - startedAt < CLAUDE_TRUST_TIMEOUT_MS) {
+  while (Date.now() - startedAt < CLI_TRUST_TIMEOUT_MS) {
     let run: ReturnType<AgentManager['getRun']>
     try {
       run = agentManager.getRun(runId)
@@ -127,10 +131,19 @@ export const prepareInteractiveAgentRun = async (
       await new Promise((resolve) => setTimeout(resolve, 250))
       if (!writeIfRunWritable(agentManager, runId, '\r')) return
       inspectedOutputLength = run.output.length
+    } else if (
+      visibleOutput.includes(CODEX_TRUST_MARKER) &&
+      visibleOutput.includes(CODEX_TRUST_CONFIRMATION)
+    ) {
+      // Codex defaults to "Yes, continue". This only approves the workspace path the user
+      // already selected for the project; arbitrary folders are never accepted here.
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      if (!writeIfRunWritable(agentManager, runId, '\r')) return
+      inspectedOutputLength = run.output.length
     } else if (hasInteractivePromptReady(run.output.slice(inspectedOutputLength), command)) {
       return
     }
-    await new Promise((resolve) => setTimeout(resolve, CLAUDE_TRUST_POLL_INTERVAL_MS))
+    await new Promise((resolve) => setTimeout(resolve, CLI_TRUST_POLL_INTERVAL_MS))
   }
 }
 

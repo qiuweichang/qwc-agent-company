@@ -4,6 +4,7 @@ import {
   createPostStartInputWriter,
   hasBracketedPasteAcknowledgement,
   hasInteractivePromptReady,
+  prepareInteractiveAgentRun,
 } from '../../src/server/post-start-input-writer.js'
 
 describe('post-start input writer', () => {
@@ -18,6 +19,28 @@ describe('post-start input writer', () => {
       hasInteractivePromptReady('Gemini CLI\n* Type your message or @path/to/file', 'gemini')
     ).toBe(true)
     expect(hasInteractivePromptReady('booting only')).toBe(false)
+  })
+
+  test('confirms the Codex trust prompt before startup guidance is written', async () => {
+    vi.useFakeTimers()
+    let output = [
+      'You are in D:\\project\\workspace',
+      'Do you trust the contents of this directory?',
+      '1. Yes, continue',
+      '2. No, quit',
+    ].join('\n')
+    const manager = {
+      getRun: vi.fn(() => ({ output, status: 'running' })),
+      writeInput: vi.fn(),
+    }
+
+    const preparation = prepareInteractiveAgentRun(manager as never, 'run-codex-trust', 'codex')
+    await vi.advanceTimersByTimeAsync(250)
+
+    expect(manager.writeInput).toHaveBeenCalledWith('run-codex-trust', '\r')
+    output += '\n❯ '
+    await vi.advanceTimersByTimeAsync(50)
+    await preparation
   })
 
   test('recognizes Claude bracketed-paste acknowledgements after the baseline output', () => {
