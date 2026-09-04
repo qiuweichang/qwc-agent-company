@@ -349,7 +349,7 @@ export const workspaceRoutes: RouteDefinition[] = [
         body.text,
         thread,
         recipient === DEPARTMENT_MANAGER_NAME
-          ? `[${threadLabel} · 用户希望由 @${DEPARTMENT_MANAGER_NAME} 处理]\n${body.text}\n不得调用 CLI 内建 AskUserQuestion 或终端选择器；需要追问时请把问题直接写回 Web 对话。`
+          ? `[${threadLabel} · 用户希望由 @${DEPARTMENT_MANAGER_NAME} 处理]\n${body.text}\n不得调用 CLI 内建 AskUserQuestion 或终端选择器；需要追问时请把问题直接写回 Web 对话。若用户要求派发成员，必须调用 Bash/Shell 工具实际执行 team send 并确认返回 dispatch_id；只输出命令文本不算派发。`
           : directWorkerInstructions,
         getRuntimePort(request)
       )

@@ -17,7 +17,7 @@ import type { AgentSummary } from '../shared/types.js'
  */
 export const ORCHESTRATOR_REMINDER_TAIL =
   '<hive-system-reminder>\n' +
-  'You are the Hive Department Manager. Reply by either: (a) `team send "<worker-name>" "<task>"` to dispatch follow-up work to a Hive worker, (b) `team cancel --dispatch <id> "<reason>"` to cancel an obsolete dispatch, or (c) plain text to the user. Every `team send` task must start with `展示计划：<6–16 个字的简短任务名>` for the member card, followed by the full instructions. Never call your CLI\'s built-in subagent tools (Task / Explore / etc.) — they bypass Hive and will not appear in the UI.\n' +
+  'You are the Hive Department Manager. To dispatch work, you MUST invoke your CLI Bash/Shell tool and actually execute `team send "<worker-name>" "<task>"`; merely printing or quoting a `team send` command in your response does not dispatch anything. Wait for the command result and confirm it returned a `dispatch_id` before telling the user that a member received work. Use `team cancel --dispatch <id> "<reason>"` the same way for obsolete work, or reply in plain text only when no dispatch is needed. Every dispatched task must start with `展示计划：<6–16 个字的简短任务名>`, followed by the full instructions. Never call your CLI\'s built-in subagent tools (Task / Explore / etc.) — they bypass Hive and will not appear in the UI.\n' +
   '</hive-system-reminder>'
 
 /**
@@ -33,6 +33,8 @@ export const buildWorkerReminderTail = (dispatchId: string) =>
 
 const ORCHESTRATOR_RULES = [
   'Hive worker 是右侧卡片里的真实 CLI agent，不是你所在 CLI 的内置 subagent / 子代理工具。',
+  '派单必须调用当前 CLI 的 Bash/Shell 工具真正执行 `team send`；只在回复正文中打印、引用或展示命令不会产生派单，严禁把未执行的命令说成“已派发”。',
+  '每条 `team send` 执行后必须读取命令结果并确认返回 `dispatch_id`；没有 `dispatch_id` 就视为派单失败，应修正命令并重试。',
   '当 user 要你“让 worker ... / 给 worker 找活 / 让成员处理”时，先执行 `team list` 确认真实 Hive worker。',
   '普通、低风险、几分钟内能直接完成的小任务可以自己做；不要为了形式感派 worker。需要并行、长时间执行、独立 review/test、专门角色，或 user 明确要求 worker/成员处理时，再用 `team send`。',
   '如果只有一个可用 worker，直接用 `team send <worker-name> "<task>"` 派给它；不要把选择题丢回给 user。',
@@ -89,6 +91,8 @@ export const buildProtocolDoc = (): string =>
     '',
     '- `team list` — show workspace members and their status',
     '- `team send "<worker-name>" "<task>"` — dispatch to a worker by name (never id)',
+    '- Invoke `team send` through the CLI Bash/Shell tool; never print the command as ordinary response text',
+    '- A dispatch is successful only after the executed command returns a `dispatch_id`',
     '- Start every `<task>` with `展示计划：<6–16 个字的简短任务名>`; put full instructions after it',
     '- `team cancel --dispatch <id> "<reason>"` — cancel an obsolete open dispatch',
     '',

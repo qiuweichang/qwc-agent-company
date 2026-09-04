@@ -51,6 +51,8 @@ export const buildAgentStartupInstructions = ({
       '- team cancel --dispatch <id> "<reason>"',
       '',
       '派单时必须使用 worker name，不要使用 worker id。',
+      '必须调用当前 CLI 的 Bash/Shell 工具实际执行 team 命令；把命令打印在回复里不算派单。',
+      '执行 team send 后必须确认命令结果返回 dispatch_id，才能告诉用户已派发。',
       '取消未完成派单时必须使用 dispatch id。',
       '',
       'Hive worker 派单规则：',

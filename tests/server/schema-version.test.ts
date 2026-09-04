@@ -1191,4 +1191,37 @@ describe('schema version', () => {
     })
     db.close()
   })
+
+  test('migration requires untouched department managers to execute dispatch commands', () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'agent-company-schema-v27-real-dispatch-'))
+    tempDirs.push(dataDir)
+
+    const db = new Database(join(dataDir, 'runtime.sqlite'))
+    initializeRuntimeDatabase(db)
+    db.prepare('DELETE FROM schema_version WHERE version = ?').run(27)
+    const strictDescription = db
+      .prepare("SELECT description FROM role_templates WHERE id = 'orchestrator'")
+      .pluck()
+      .get() as string
+    const legacyDescription = strictDescription.replace(
+      '\n- 派单必须调用当前 CLI 的 Bash/Shell 工具实际执行 `team send`，不能把命令当普通文本输出；只有命令返回 `dispatch_id` 才能向用户宣称派单成功。',
+      ''
+    )
+    db.prepare("UPDATE role_templates SET description = ? WHERE id = 'orchestrator'").run(
+      legacyDescription
+    )
+
+    initializeRuntimeDatabase(db)
+
+    const description = db
+      .prepare("SELECT description FROM role_templates WHERE id = 'orchestrator'")
+      .pluck()
+      .get() as string
+    expect(description).toContain('Bash/Shell 工具实际执行 `team send`')
+    expect(description).toContain('`dispatch_id`')
+    expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(27)).toEqual({
+      version: 27,
+    })
+    db.close()
+  })
 })

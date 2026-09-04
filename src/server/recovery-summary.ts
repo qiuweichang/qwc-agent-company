@@ -127,6 +127,8 @@ export const buildRecoverySummary = ({
       agent.role === 'orchestrator' ? '## Hive worker 派单规则' : '## Hive worker 边界',
       ...getHiveTeamRules(agent),
       '',
-      '请基于此继续。如果不确定，问 user。',
+      agent.role === 'orchestrator'
+        ? '请基于最近一条 user 指令继续。需要派单时必须通过 Bash/Shell 工具实际执行 team send，并以命令返回的 dispatch_id 为成功依据；禁止只打印命令文本。'
+        : '请基于此继续。如果不确定，问 user。',
     ].join('\n')
   )

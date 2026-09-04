@@ -17,6 +17,9 @@ describe('ORCHESTRATOR_REMINDER_TAIL', () => {
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team send "<worker-name>" "<task>"')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('team cancel --dispatch <id> "<reason>"')
     expect(ORCHESTRATOR_REMINDER_TAIL).toContain('展示计划：<6–16 个字的简短任务名>')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('MUST invoke your CLI Bash/Shell tool')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('dispatch_id')
+    expect(ORCHESTRATOR_REMINDER_TAIL).toContain('merely printing')
   })
 
   test('forbids the CLI built-in subagent escape hatch', () => {
@@ -71,6 +74,7 @@ describe('buildProtocolDoc', () => {
     expect(doc).toContain('## `team` CLI — worker')
     expect(doc).toContain('team cancel --dispatch <id> "<reason>"')
     expect(doc).toContain('展示计划：<6–16 个字的简短任务名>')
+    expect(doc).toContain('never print the command as ordinary response text')
   })
 
   test('mentions the .hive/PROTOCOL.md cat-recover path explicitly', () => {
