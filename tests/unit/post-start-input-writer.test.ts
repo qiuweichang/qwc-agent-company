@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import {
   createPostStartInputWriter,
+  hasCodexTurnStarted,
   hasBracketedPasteAcknowledgement,
   hasInteractivePromptReady,
   hasInteractiveTurnCompleted,
@@ -26,6 +27,14 @@ describe('post-start input writer', () => {
     expect(hasInteractiveTurnCompleted('Working\n❯ ')).toBe(false)
     expect(hasInteractiveTurnCompleted('✻ Crunched for 9m 18s\n❯ ')).toBe(true)
     expect(hasInteractiveTurnCompleted('─ Worked for 28m 43s ─\n› ')).toBe(true)
+  })
+
+  test('detects when Codex has accepted a pasted prompt after the output baseline', () => {
+    const baseline = 'OpenAI Codex\n› '
+    expect(hasCodexTurnStarted(`${baseline}[Pasted Content 12000 chars]`, baseline.length)).toBe(
+      false
+    )
+    expect(hasCodexTurnStarted(`${baseline}◦ Working (2s)`, baseline.length)).toBe(true)
   })
 
   test('waits past the Codex splash prompt and confirms the delayed trust menu', async () => {
@@ -169,6 +178,8 @@ describe('post-start input writer', () => {
     expect(manager.writeInput).toHaveBeenNthCalledWith(3, 'run-codex', '\r')
     vi.advanceTimersByTime(1500)
     expect(manager.writeInput).toHaveBeenNthCalledWith(4, 'run-codex', '\r')
+    vi.advanceTimersByTime(7000)
+    expect(manager.writeInput).toHaveBeenNthCalledWith(5, 'run-codex', '\r')
   })
 
   test('waits for a fresh Codex prompt before writing a later message', () => {
@@ -185,11 +196,12 @@ describe('post-start input writer', () => {
     vi.advanceTimersByTime(600)
     vi.advanceTimersByTime(500)
     vi.advanceTimersByTime(1500)
-    expect(manager.writeInput).toHaveBeenCalledTimes(4)
+    vi.advanceTimersByTime(7000)
+    expect(manager.writeInput).toHaveBeenCalledTimes(5)
 
     write('run-codex-fresh-prompt', 'follow-up task')
     vi.advanceTimersByTime(5000)
-    expect(manager.writeInput).toHaveBeenCalledTimes(4)
+    expect(manager.writeInput).toHaveBeenCalledTimes(5)
 
     output += '\nWorking\n❯ '
     vi.advanceTimersByTime(5000)
@@ -198,7 +210,7 @@ describe('post-start input writer', () => {
     output += '\n─ Worked for 12s ─\n❯ '
     vi.advanceTimersByTime(350)
     expect(manager.writeInput).toHaveBeenNthCalledWith(
-      5,
+      6,
       'run-codex-fresh-prompt',
       '\u001b[200~follow-up task\u001b[201~'
     )

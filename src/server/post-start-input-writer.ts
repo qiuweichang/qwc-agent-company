@@ -14,6 +14,7 @@ const PASTE_ACK_SETTLE_DELAY_MS = 100
 const PASTE_ACK_TIMEOUT_MS = 3000
 const CODEX_SECOND_SUBMIT_DELAY_MS = 500
 const CODEX_FINAL_SUBMIT_RETRY_DELAY_MS = 1500
+const CODEX_LARGE_PASTE_RETRY_DELAY_MS = 7000
 const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
 // Cold Windows starts can take several seconds before either CLI paints its trust menu.
 const CLI_TRUST_TIMEOUT_MS = 15000
@@ -74,6 +75,12 @@ const hasGeminiPromptReady = (output: string) => /\bType your message\b/u.test(o
  */
 export const hasInteractiveTurnCompleted = (output: string) =>
   /\b[A-Z][A-Za-z-]{2,24}\s+for\s+\d+(?:ms|s|m|h)\b/u.test(stripTerminalControls(output))
+
+/** Returns true once Codex has consumed the pasted prompt and entered a model turn. */
+export const hasCodexTurnStarted = (output: string, baselineLength: number) => {
+  const visibleOutput = stripTerminalControls(output.slice(baselineLength))
+  return /\bWorking\s*\(/u.test(visibleOutput) || hasInteractiveTurnCompleted(visibleOutput)
+}
 
 export const hasInteractivePromptReady = (output: string, command = '') => {
   const commandName = getCommandName(command)
@@ -199,24 +206,37 @@ const submitPastedInteractiveInput = (
       return
     }
 
-    // Codex can use the first Enter to accept a large bracketed-paste block without submitting it.
-    // On Windows, a resumed TUI can also ignore the immediate confirmation while it renders the
-    // accepted block. Two bounded retries cover both states; Enter is harmless once Codex is busy.
-    setTimeout(() => {
-      try {
-        writeIfRunWritable(agentManager, runId, '\r')
-      } catch {
-        // The run may have exited after completing a very short task.
+    const retryDelays = [
+      CODEX_SECOND_SUBMIT_DELAY_MS,
+      CODEX_FINAL_SUBMIT_RETRY_DELAY_MS,
+      CODEX_LARGE_PASTE_RETRY_DELAY_MS,
+    ]
+    const scheduleCodexSubmissionRetry = (retryIndex: number) => {
+      const retryDelay = retryDelays[retryIndex]
+      if (retryDelay === undefined) {
+        onSubmitted()
+        return
       }
-
       setTimeout(() => {
+        const output = getWritableOutput()
+        if (output === null || hasCodexTurnStarted(output, baselineLength)) {
+          onSubmitted()
+          return
+        }
         try {
           writeIfRunWritable(agentManager, runId, '\r')
-        } finally {
+        } catch {
           onSubmitted()
+          return
         }
-      }, CODEX_FINAL_SUBMIT_RETRY_DELAY_MS)
-    }, CODEX_SECOND_SUBMIT_DELAY_MS)
+        scheduleCodexSubmissionRetry(retryIndex + 1)
+      }, retryDelay)
+    }
+
+    // Codex may use Enter only to collapse a large paste into `[Pasted Content]`.
+    // Confirm that a model turn actually began, with one longer bounded retry for
+    // large Windows PTY payloads that are still being rendered after quick retries.
+    scheduleCodexSubmissionRetry(0)
   }
 
   const trySubmit = () => {
