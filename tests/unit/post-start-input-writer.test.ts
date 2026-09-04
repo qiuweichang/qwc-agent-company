@@ -4,6 +4,7 @@ import {
   createPostStartInputWriter,
   hasBracketedPasteAcknowledgement,
   hasInteractivePromptReady,
+  hasInteractiveTurnCompleted,
   prepareInteractiveAgentRun,
 } from '../../src/server/post-start-input-writer.js'
 
@@ -19,6 +20,12 @@ describe('post-start input writer', () => {
       hasInteractivePromptReady('Gemini CLI\n* Type your message or @path/to/file', 'gemini')
     ).toBe(true)
     expect(hasInteractivePromptReady('booting only')).toBe(false)
+  })
+
+  test('distinguishes a completed turn from the input row rendered while work continues', () => {
+    expect(hasInteractiveTurnCompleted('Working\n❯ ')).toBe(false)
+    expect(hasInteractiveTurnCompleted('✻ Crunched for 9m 18s\n❯ ')).toBe(true)
+    expect(hasInteractiveTurnCompleted('─ Worked for 28m 43s ─\n› ')).toBe(true)
   })
 
   test('waits past the Codex splash prompt and confirms the delayed trust menu', async () => {
@@ -185,6 +192,10 @@ describe('post-start input writer', () => {
     expect(manager.writeInput).toHaveBeenCalledTimes(4)
 
     output += '\nWorking\n❯ '
+    vi.advanceTimersByTime(5000)
+    expect(manager.writeInput).toHaveBeenCalledTimes(4)
+
+    output += '\n─ Worked for 12s ─\n❯ '
     vi.advanceTimersByTime(350)
     expect(manager.writeInput).toHaveBeenNthCalledWith(
       5,

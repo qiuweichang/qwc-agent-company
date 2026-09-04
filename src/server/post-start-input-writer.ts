@@ -67,6 +67,14 @@ const getCommandName = (command: string) => basename(command).toLowerCase()
 
 const hasGeminiPromptReady = (output: string) => /\bType your message\b/u.test(output)
 
+/**
+ * Detects the durable completion footer emitted after a Claude or Codex turn.
+ * Their TUIs keep a visible `❯` input row while the model is busy, so the prompt
+ * glyph alone cannot prove that a queued follow-up can be submitted safely.
+ */
+export const hasInteractiveTurnCompleted = (output: string) =>
+  /\b[A-Z][A-Za-z-]{2,24}\s+for\s+\d+(?:ms|s|m|h)\b/u.test(stripTerminalControls(output))
+
 export const hasInteractivePromptReady = (output: string, command = '') => {
   const commandName = getCommandName(command)
   const visibleOutput = stripTerminalControls(output)
@@ -289,7 +297,12 @@ export const createPostStartInputWriter = (
         pendingInput.readyAfterOutputLength === null
           ? output
           : output.slice(pendingInput.readyAfterOutputLength)
-      const promptIsReady = hasInteractivePromptReady(promptOutput, pendingInput.command)
+      const requiresCompletedTurn =
+        pendingInput.readyAfterOutputLength !== null &&
+        (isClaudeCommand(pendingInput.command) || isCodexCommand(pendingInput.command))
+      const promptIsReady =
+        hasInteractivePromptReady(promptOutput, pendingInput.command) &&
+        (!requiresCompletedTurn || hasInteractiveTurnCompleted(promptOutput))
       const canUseInitialTimeout =
         pendingInput.readyAfterOutputLength === null &&
         canTimeoutBeforePromptReady(pendingInput.command) &&
