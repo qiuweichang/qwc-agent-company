@@ -60,7 +60,7 @@ import {
   updateRoleTemplate,
 } from '../api.js'
 import { WorkspaceTerminalPanels } from '../WorkspaceTerminalPanels.js'
-import { ArtifactFrame } from './ArtifactFrame.js'
+import { ArtifactFrame, orderConversationArtifacts } from './ArtifactFrame.js'
 import { CliAvatar } from './CliAvatar.js'
 import { DeleteProjectDialog } from './DeleteProjectDialog.js'
 import { DeploymentDialog } from './DeploymentDialog.js'
@@ -901,7 +901,7 @@ export const AgentCompanyApp = () => {
                                 prompt={choicePrompt}
                               />
                             ) : null}
-                            {entry.artifacts.map((artifact) => (
+                            {orderConversationArtifacts(entry.artifacts).map((artifact) => (
                               <ArtifactFrame
                                 key={artifact}
                                 path={artifact}

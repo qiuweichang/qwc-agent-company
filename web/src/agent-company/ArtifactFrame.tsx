@@ -19,6 +19,21 @@ const isImageArtifact = (path: string) => /\.(?:png|jpe?g|webp|svg)$/i.test(path
 const isHtmlArtifact = (path: string) => /\.html?$/i.test(path)
 
 /**
+ * Places generated prototype screenshots before supporting HTML and Markdown
+ * files. Agents often report DESIGN.md first, but the conversation's primary
+ * design evidence is the visual Stitch output rather than the index document.
+ */
+export const orderConversationArtifacts = (artifacts: string[]): string[] =>
+  artifacts
+    .map((path, index) => ({
+      index,
+      path,
+      priority: isImageArtifact(path) ? 0 : isHtmlArtifact(path) ? 1 : 2,
+    }))
+    .sort((left, right) => left.priority - right.priority || left.index - right.index)
+    .map(({ path }) => path)
+
+/**
  * Renders an agent-reported visual artifact. HTML diagrams stay sandboxed in an
  * iframe; host-side zoom controls remain available in embedded Archify mode.
  */
@@ -63,7 +78,9 @@ export const ArtifactFrame = ({ path, title, workspaceId }: ArtifactFrameProps) 
   return (
     <section className="ac-artifact" aria-label={title}>
       <div className="ac-artifact__head">
-        <span className="ac-artifact__kind">ARCHIFY · HTML</span>
+        <span className="ac-artifact__kind">
+          {/stitch-/iu.test(path) ? 'STITCH · HTML' : 'ARCHIFY · HTML'}
+        </span>
         <strong>{title}</strong>
         <a
           className="ac-icon-button"

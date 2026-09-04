@@ -40,4 +40,30 @@ describe('mergeReportedArtifactPaths', () => {
       'docs/design/stitch-result.png',
     ])
   })
+
+  test('discovers Stitch screenshots registered by a reported design document', () => {
+    const workspacePath = mkdtempSync(join(tmpdir(), 'agent-company-design-index-'))
+    tempDirs.push(workspacePath)
+    const designPath = join(workspacePath, 'docs', 'design')
+    mkdirSync(designPath, { recursive: true })
+    writeFileSync(join(designPath, 'screen.png'), 'image')
+    writeFileSync(join(designPath, 'screen.html'), '<!doctype html>')
+    writeFileSync(
+      join(designPath, 'DESIGN.md'),
+      '[PNG](./screen.png) · [HTML](./screen.html) · [missing](./missing.png)',
+      'utf8'
+    )
+
+    expect(
+      mergeReportedArtifactPaths(
+        workspacePath,
+        ['docs/design/DESIGN.md'],
+        '设计规范和全部 Stitch 原型均已登记在 docs/design/DESIGN.md。'
+      )
+    ).toEqual([
+      'docs/design/DESIGN.md',
+      'docs/design/screen.png',
+      'docs/design/screen.html',
+    ])
+  })
 })
