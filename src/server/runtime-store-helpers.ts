@@ -94,7 +94,15 @@ export const createRuntimeStoreServices = (
     workflowStore,
   })
   const workerOutputTracker = options.agentManager
-    ? createWorkerOutputTracker(options.agentManager.getOutputBus())
+    ? createWorkerOutputTracker(options.agentManager.getOutputBus(), {
+        onFatalRun({ agentId, reason, runId, workspaceId }) {
+          console.error(
+            `[agent-company] stopping unusable CLI run ${runId} for ${workspaceId}/${agentId}: ${reason}`
+          )
+          // Stop outside the PTY output callback so exit cleanup can unsubscribe safely.
+          queueMicrotask(() => options.agentManager?.stopRun(runId))
+        },
+      })
     : null
   const agentRuntime = createAgentRuntime(
     options.agentManager,
