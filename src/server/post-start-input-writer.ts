@@ -18,6 +18,8 @@ const COMMANDS_WITH_BRACKETED_PASTE = new Set(['claude', 'codex', 'opencode'])
 // Cold Windows starts can take several seconds before either CLI paints its trust menu.
 const CLI_TRUST_TIMEOUT_MS = 15000
 const CLI_TRUST_POLL_INTERVAL_MS = 50
+// Codex paints an apparently writable splash prompt before its trust dialog on first use.
+const CODEX_TRUST_GRACE_PERIOD_MS = 2000
 const CLAUDE_TRUST_MARKER = 'Yes,Itrustthisfolder'
 const CLAUDE_BYPASS_MARKER = 'Yes,Iaccept'
 const CODEX_TRUST_MARKER = 'Doyoutrustthecontentsofthisdirectory?'
@@ -110,6 +112,8 @@ export const prepareInteractiveAgentRun = async (
   if (!isClaudeCommand(command) && !isCodexCommand(command)) return
   const startedAt = Date.now()
   let inspectedOutputLength = 0
+  let codexReadyObservedAt: number | null = null
+  let codexTrustConfirmed = false
   while (Date.now() - startedAt < CLI_TRUST_TIMEOUT_MS) {
     let run: ReturnType<AgentManager['getRun']>
     try {
@@ -140,8 +144,14 @@ export const prepareInteractiveAgentRun = async (
       await new Promise((resolve) => setTimeout(resolve, 250))
       if (!writeIfRunWritable(agentManager, runId, '\r')) return
       inspectedOutputLength = run.output.length
+      codexTrustConfirmed = true
     } else if (hasInteractivePromptReady(run.output.slice(inspectedOutputLength), command)) {
-      return
+      if (!isCodexCommand(command) || codexTrustConfirmed) return
+
+      // A fresh Codex process briefly exposes its main prompt before checking directory
+      // trust. Keep observing that first prompt so dispatch text cannot land in the menu.
+      codexReadyObservedAt ??= Date.now()
+      if (Date.now() - codexReadyObservedAt >= CODEX_TRUST_GRACE_PERIOD_MS) return
     }
     await new Promise((resolve) => setTimeout(resolve, CLI_TRUST_POLL_INTERVAL_MS))
   }

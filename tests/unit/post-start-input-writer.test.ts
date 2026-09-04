@@ -21,13 +21,12 @@ describe('post-start input writer', () => {
     expect(hasInteractivePromptReady('booting only')).toBe(false)
   })
 
-  test('confirms the Codex trust prompt before startup guidance is written', async () => {
+  test('waits past the Codex splash prompt and confirms the delayed trust menu', async () => {
     vi.useFakeTimers()
     let output = [
-      'You are in D:\\project\\workspace',
-      'Do you trust the contents of this directory?',
-      '1. Yes, continue',
-      '2. No, quit',
+      'OpenAI Codex (v0.153.2)',
+      'model: loading',
+      '› Ask Codex to do anything',
     ].join('\n')
     const manager = {
       getRun: vi.fn(() => ({ output, status: 'running' })),
@@ -35,7 +34,16 @@ describe('post-start input writer', () => {
     }
 
     const preparation = prepareInteractiveAgentRun(manager as never, 'run-codex-trust', 'codex')
-    await vi.advanceTimersByTimeAsync(250)
+    await vi.advanceTimersByTimeAsync(1500)
+    expect(manager.writeInput).not.toHaveBeenCalled()
+
+    output += `\n${[
+      'You are in D:\\project\\workspace',
+      'Do you trust the contents of this directory?',
+      '1. Yes, continue',
+      '2. No, quit',
+    ].join('\n')}`
+    await vi.advanceTimersByTimeAsync(300)
 
     expect(manager.writeInput).toHaveBeenCalledWith('run-codex-trust', '\r')
     output += '\n❯ '
