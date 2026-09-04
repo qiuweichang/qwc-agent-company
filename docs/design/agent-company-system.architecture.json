@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Agent Company 底层系统架构",
+    "locale": "zh-CN",
+    "output": "agent-company-system-architecture.html",
+    "quality_profile": "showcase"
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "本机用户",
+      "sublabel": "需求与阶段确认",
+      "pos": [10, 280],
+      "size": [110, 68]
+    },
+    {
+      "id": "workbench",
+      "type": "frontend",
+      "label": "React Web 工作台",
+      "sublabel": "对话 / 团队 / 终端 / 产物",
+      "tag": "React 19 + xterm.js",
+      "pos": [145, 280],
+      "size": [145, 68]
+    },
+    {
+      "id": "gateway",
+      "type": "security",
+      "label": "本地 HTTP / WS 网关",
+      "sublabel": "HTTP 路由 + WebSocket",
+      "tag": "127.0.0.1",
+      "pos": [350, 280],
+      "size": [155, 68]
+    },
+    {
+      "id": "runtime_store",
+      "type": "backend",
+      "label": "RuntimeStore 门面",
+      "sublabel": "服务组合与资源生命周期",
+      "pos": [560, 280],
+      "size": [150, 68]
+    },
+    {
+      "id": "team_ops",
+      "type": "messagebus",
+      "label": "Team 派单协议",
+      "sublabel": "派发 / 汇报 / 取消",
+      "tag": "dispatch_id",
+      "pos": [560, 490],
+      "size": [150, 68]
+    },
+    {
+      "id": "agent_runtime",
+      "type": "backend",
+      "label": "Agent Runtime",
+      "sublabel": "启动 / 恢复 / 状态收口",
+      "pos": [760, 490],
+      "size": [150, 68]
+    },
+    {
+      "id": "pty",
+      "type": "backend",
+      "label": "PTY 进程管理器",
+      "sublabel": "node-pty / ConPTY",
+      "tag": "stdin + stdout",
+      "pos": [960, 490],
+      "size": [140, 68]
+    },
+    {
+      "id": "cli_agents",
+      "type": "external",
+      "label": "真实 CLI Agents",
+      "sublabel": "Claude Code / Codex",
+      "tag": "独立上下文",
+      "pos": [1150, 490],
+      "size": [150, 68]
+    },
+    {
+      "id": "workflow",
+      "type": "backend",
+      "label": "工作流与阶段门",
+      "sublabel": "需求 → 方案 → 开发 → 验收",
+      "tag": "planning / execution",
+      "pos": [545, 70],
+      "size": [180, 72]
+    },
+    {
+      "id": "sqlite",
+      "type": "database",
+      "label": "SQLite 事实库",
+      "sublabel": "消息 / 派单 / 运行 / 会话",
+      "tag": "runtime.sqlite",
+      "pos": [350, 710],
+      "size": [170, 72]
+    },
+    {
+      "id": "workspace_files",
+      "type": "database",
+      "label": "项目工作区",
+      "sublabel": "项目文件 + .hive/tasks.md",
+      "tag": "文件系统",
+      "pos": [930, 710],
+      "size": [170, 72]
+    },
+    {
+      "id": "capabilities",
+      "type": "external",
+      "label": "专业能力",
+      "sublabel": "Archify / Stitch MCP / Skills",
+      "tag": "架构与 UI 产物",
+      "pos": [1150, 710],
+      "size": [170, 72]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Windows 本机单用户边界",
+      "wraps": [
+        "workbench",
+        "gateway",
+        "runtime_store",
+        "team_ops",
+        "agent_runtime",
+        "pty",
+        "cli_agents",
+        "workflow",
+        "sqlite",
+        "workspace_files",
+        "capabilities"
+      ],
+      "pad": 24
+    },
+    {
+      "kind": "security-group",
+      "label": "UI Cookie / Agent Token 鉴权",
+      "wraps": ["gateway"],
+      "pad": 14
+    }
+  ],
+  "connections": [
+    {
+      "id": "user-workbench",
+      "from": "user",
+      "to": "workbench",
+      "variant": "emphasis"
+    },
+    {
+      "id": "workbench-gateway",
+      "from": "workbench",
+      "to": "gateway",
+      "label": "HTTP / WS",
+      "variant": "emphasis"
+    },
+    {
+      "id": "gateway-store",
+      "from": "gateway",
+      "to": "runtime_store",
+      "variant": "emphasis"
+    },
+    {
+      "id": "store-team",
+      "from": "runtime_store",
+      "to": "team_ops",
+      "variant": "emphasis"
+    },
+    {
+      "id": "team-runtime",
+      "from": "team_ops",
+      "to": "agent_runtime",
+      "label": "stdin",
+      "variant": "emphasis"
+    },
+    {
+      "id": "runtime-pty",
+      "from": "agent_runtime",
+      "to": "pty",
+      "label": "spawn",
+      "variant": "emphasis"
+    },
+    {
+      "id": "pty-cli",
+      "from": "pty",
+      "to": "cli_agents",
+      "label": "终端",
+      "variant": "emphasis"
+    },
+    {
+      "id": "store-workflow",
+      "from": "runtime_store",
+      "to": "workflow",
+      "label": "校验阶段前置条件",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "store-sqlite",
+      "from": "runtime_store",
+      "to": "sqlite",
+      "label": "事务化事实写入",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cli-workspace",
+      "from": "cli_agents",
+      "to": "workspace_files",
+      "label": "读写项目产物",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cli-capabilities",
+      "from": "cli_agents",
+      "to": "capabilities",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "capabilities-workspace",
+      "from": "capabilities",
+      "to": "workspace_files",
+      "label": "产物"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "主链路",
+      "items": [
+        "Web 只是控制台，真正执行者是本机 CLI 进程",
+        "RuntimeStore 统一组合路由、状态、派单、运行和资源回收",
+        "team 协议用 dispatch_id 把派单与回报闭环"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "一致性与恢复",
+      "items": [
+        "SQLite 保存可追溯事实，内存只保留活跃运行快照",
+        "派单投递失败时回滚消息和 ledger，避免假成功",
+        "原生 session resume 失败时，用消息、未完任务和 tasks.md 重建上下文"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "边界与取舍",
+      "items": [
+        "Runtime 仅监听 127.0.0.1，UI 和 Agent 使用不同 token",
+        "业务概览用轮询保持简单，高频终端流用 WebSocket",
+        "CLI 拥有当前 Windows 用户权限，所以信任边界是本机与工作区"
+      ]
+    }
+  ]
+}
