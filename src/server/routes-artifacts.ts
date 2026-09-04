@@ -21,11 +21,15 @@ const CONTENT_TYPES: Record<string, string> = {
  * realpath so a symlink cannot escape the local project trust boundary.
  */
 const resolveWorkspaceArtifact = async (workspacePath: string, requestedPath: string) => {
-  if (!requestedPath.trim() || isAbsolute(requestedPath)) {
-    throw new BadRequestError('Artifact path must be workspace-relative')
-  }
+  if (!requestedPath.trim()) throw new BadRequestError('Artifact path is required')
   const workspaceRoot = await realpath(workspacePath)
-  const artifactPath = await realpath(resolve(workspaceRoot, requestedPath))
+  // Older CLI reports could persist an absolute filename returned by a generator.
+  // Resolve both forms, then apply the same realpath containment check so an
+  // in-workspace legacy record remains viewable without weakening the boundary.
+  const candidatePath = isAbsolute(requestedPath)
+    ? requestedPath
+    : resolve(workspaceRoot, requestedPath)
+  const artifactPath = await realpath(candidatePath)
   const relativePath = relative(workspaceRoot, artifactPath)
   if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
     throw new BadRequestError('Artifact path is outside the workspace')

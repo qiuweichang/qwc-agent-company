@@ -1,6 +1,28 @@
 import { describe, expect, test } from 'vitest'
 
-import { normalizeTeamStdinContent, parseCancelArgs, parseReportArgs } from '../../src/cli/team.js'
+import {
+  normalizeReportedArtifactPath,
+  normalizeTeamStdinContent,
+  parseCancelArgs,
+  parseReportArgs,
+} from '../../src/cli/team.js'
+
+describe('normalizeReportedArtifactPath', () => {
+  test('normalizes an absolute generator artifact inside the project', () => {
+    expect(
+      normalizeReportedArtifactPath(
+        'D:\\projects\\smart-park\\docs\\architecture\\overview.html',
+        'D:\\projects\\smart-park'
+      )
+    ).toBe('docs/architecture/overview.html')
+  })
+
+  test('keeps an absolute artifact outside the project for server rejection', () => {
+    expect(
+      normalizeReportedArtifactPath('D:\\outside\\overview.html', 'D:\\projects\\smart-park')
+    ).toBe('D:\\outside\\overview.html')
+  })
+})
 
 describe('normalizeTeamStdinContent', () => {
   test('preserves valid Chinese content and removes an optional UTF-8 byte-order mark', () => {

@@ -1,4 +1,5 @@
 import { realpathSync } from 'node:fs'
+import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REQUIRED_ENV_KEYS = [
@@ -188,6 +189,23 @@ export interface ParsedReportArgs {
   dispatchId: string | undefined
   result: string | null
   useStdin: boolean
+}
+
+/**
+ * Converts an absolute generator result under the current project into the stable
+ * workspace-relative artifact contract. Paths outside the project stay absolute
+ * so the server-side trust-boundary check can reject them explicitly.
+ */
+export const normalizeReportedArtifactPath = (artifactPath: string, cwd = process.cwd()) => {
+  const trimmedPath = artifactPath.trim()
+  if (!trimmedPath || !isAbsolute(trimmedPath)) return trimmedPath.replaceAll('\\', '/')
+
+  const workspaceRoot = resolve(cwd)
+  const relativePath = relative(workspaceRoot, resolve(trimmedPath))
+  if (!relativePath || relativePath.startsWith('..') || isAbsolute(relativePath)) {
+    return trimmedPath
+  }
+  return relativePath.split(sep).join('/')
 }
 
 export const parseReportArgs = (args: string[], command = 'report'): ParsedReportArgs => {
@@ -521,7 +539,7 @@ export const runTeamCommand = async (argv: string[]) => {
       from_agent_id: env.HIVE_AGENT_ID,
       token: env.HIVE_AGENT_TOKEN,
       result: body,
-      artifacts: report.artifacts,
+      artifacts: report.artifacts.map((artifact) => normalizeReportedArtifactPath(artifact)),
     })
     const payload = (await response.json()) as TeamReportResponse
     if (payload.forwarded === false && payload.forward_error) {
@@ -544,7 +562,7 @@ export const runTeamCommand = async (argv: string[]) => {
       from_agent_id: env.HIVE_AGENT_ID,
       token: env.HIVE_AGENT_TOKEN,
       result: body,
-      artifacts: report.artifacts,
+      artifacts: report.artifacts.map((artifact) => normalizeReportedArtifactPath(artifact)),
     })
     const payload = (await response.json()) as TeamReportResponse
     if (payload.forwarded === false && payload.forward_error) {
