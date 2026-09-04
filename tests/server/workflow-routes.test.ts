@@ -62,6 +62,9 @@ describe('project workflow routes', () => {
       const workspace = server.store.createWorkspace(workspacePath, 'Student Admin')
       const architect = server.store.addWorker(workspace.id, { name: '架构师', role: 'custom' })
       const designer = server.store.addWorker(workspace.id, { name: 'UI 设计师', role: 'custom' })
+      const frontend = server.store.addWorker(workspace.id, { name: '前端工程师', role: 'custom' })
+      const backend = server.store.addWorker(workspace.id, { name: '后端工程师', role: 'custom' })
+      const tester = server.store.addWorker(workspace.id, { name: '测试工程师', role: 'custom' })
 
       const userInput = await fetch(`${server.baseUrl}/api/workspaces/${workspace.id}/user-input`, {
         body: JSON.stringify({
@@ -158,6 +161,42 @@ describe('project workflow routes', () => {
       expect(await execution.json()).toEqual([
         expect.objectContaining({ actor_name: '流程系统', type: 'system' }),
       ])
+
+      expect(
+        (await transition(server.baseUrl, cookie, workspace.id, 'start_acceptance')).status
+      ).toBe(409)
+      await server.store.dispatchTask(workspace.id, frontend.id, '实现前端')
+      server.store.reportTask(workspace.id, frontend.id, {
+        status: 'success',
+        text: '状态：success\n前端功能完成',
+      })
+      await server.store.dispatchTask(workspace.id, backend.id, '实现后端')
+      server.store.reportTask(workspace.id, backend.id, {
+        status: 'success',
+        text: '状态：success\n后端功能完成',
+      })
+      expect(
+        (await transition(server.baseUrl, cookie, workspace.id, 'start_acceptance')).status
+      ).toBe(200)
+
+      expect(
+        (await transition(server.baseUrl, cookie, workspace.id, 'complete_project')).status
+      ).toBe(409)
+      mkdirSync(join(workspacePath, 'docs', 'test-results'), { recursive: true })
+      writeFileSync(
+        join(workspacePath, 'docs', 'test-results', 'acceptance.md'),
+        '# Acceptance\n\nAll core paths passed.',
+        'utf8'
+      )
+      await server.store.dispatchTask(workspace.id, tester.id, '执行全流程测试')
+      server.store.reportTask(workspace.id, tester.id, {
+        artifacts: ['docs/test-results/acceptance.md'],
+        status: 'success',
+        text: '状态：success\n全部核心用例通过',
+      })
+      expect(
+        (await transition(server.baseUrl, cookie, workspace.id, 'complete_project')).status
+      ).toBe(200)
     } finally {
       await server.close()
     }

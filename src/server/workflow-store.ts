@@ -141,7 +141,7 @@ export const createWorkflowStore = (db: Database) => {
         next.activeThread = 'execution'
         thread = 'execution'
         eventText =
-          '方案已全部确认，执行流程已开启。部门经理须立即制定开发计划并并行派发前后端开发任务。'
+          '方案已全部确认，执行流程已开启。部门经理须立即制定开发计划并并行派发前后端开发任务。只有前端工程师和后端工程师分别提交 status: success 的完成汇报后，才能进入验收。'
         break
       case 'start_acceptance':
         if (current.stage !== 'development') throw new ConflictError('项目尚未处于开发阶段')
@@ -149,7 +149,7 @@ export const createWorkflowStore = (db: Database) => {
         next.activeThread = 'execution'
         thread = 'execution'
         eventText =
-          '开发完成，进入全流程验收。部门经理须立即派发测试人员执行真实点击与功能测试并提交证据。'
+          '开发完成，进入全流程验收。部门经理须立即派发测试人员执行真实点击与功能测试；只有测试工程师提交 status: success 汇报并登记测试报告或截图后，才能完成项目。'
         break
       case 'complete_project':
         if (current.stage !== 'acceptance') throw new ConflictError('只有验收阶段可以完成项目')

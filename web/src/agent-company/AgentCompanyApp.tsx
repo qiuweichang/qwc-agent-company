@@ -32,6 +32,10 @@ import type {
   WorkflowThread,
 } from '../../../src/shared/workflow-types.js'
 import {
+  evaluateAcceptanceReadiness,
+  evaluateDevelopmentReadiness,
+} from '../../../src/shared/workflow-readiness.js'
+import {
   type CommandPreset,
   createRoleTemplate,
   createWorker,
@@ -939,6 +943,7 @@ export const AgentCompanyApp = () => {
               <div className="ac-action-dock">
                 {workflow ? (
                   <WorkflowGate
+                    entries={entries}
                     hasArchitectureArtifact={hasArchitectureArtifact}
                     hasUiArtifact={hasUiArtifact}
                     onAction={applyWorkflowAction}
@@ -1206,11 +1211,13 @@ const TeamGroup = ({
 
 /** Renders only the actions valid for the current lifecycle stage. */
 const WorkflowGate = ({
+  entries,
   hasArchitectureArtifact,
   hasUiArtifact,
   onAction,
   workflow,
 }: {
+  entries: ConversationEntry[]
   hasArchitectureArtifact: boolean
   hasUiArtifact: boolean
   onAction: (action: WorkflowAction) => Promise<void>
@@ -1283,16 +1290,23 @@ const WorkflowGate = ({
     )
   }
   if (workflow.stage === 'development') {
+    const readiness = evaluateDevelopmentReadiness(entries)
     return (
       <section className="ac-gate">
         <div>
           <span className="ac-eyebrow">IMPLEMENTATION</span>
           <strong>开发目标完成后进入验收</strong>
-          <p>测试人员将在执行流程启动真实应用并执行浏览器点击与全流程测试。</p>
+          <p>
+            {readiness.ready
+              ? '前后端完成证据已齐全，可以进入真实应用验收。'
+              : `等待：${readiness.blockers.join('；')}`}
+          </p>
         </div>
         <button
           type="button"
           className="ac-button ac-button--primary"
+          disabled={!readiness.ready}
+          title={readiness.ready ? '进入全流程验收' : readiness.blockers.join('；')}
           onClick={() => void onAction('start_acceptance')}
         >
           进入全流程验收
@@ -1301,16 +1315,23 @@ const WorkflowGate = ({
     )
   }
   if (workflow.stage === 'acceptance') {
+    const readiness = evaluateAcceptanceReadiness(entries)
     return (
       <section className="ac-gate">
         <div>
           <span className="ac-eyebrow">ACCEPTANCE</span>
           <strong>确认所有真实功能测试证据</strong>
-          <p>失败或未验证的核心路径必须修复并复验，不能用计划或 mock 替代。</p>
+          <p>
+            {readiness.ready
+              ? '真实测试结果与验收证据已齐全，可以完成项目。'
+              : `等待：${readiness.blockers.join('；')}`}
+          </p>
         </div>
         <button
           type="button"
           className="ac-button ac-button--primary"
+          disabled={!readiness.ready}
+          title={readiness.ready ? '验收并完成项目' : readiness.blockers.join('；')}
           onClick={() => void onAction('complete_project')}
         >
           <Check size={15} />

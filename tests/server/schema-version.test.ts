@@ -1152,4 +1152,43 @@ describe('schema version', () => {
     })
     db.close()
   })
+
+  test('migration adds evidence contracts only to untouched future role templates', () => {
+    const dataDir = mkdtempSync(join(tmpdir(), 'agent-company-schema-v26-evidence-gates-'))
+    tempDirs.push(dataDir)
+
+    const db = new Database(join(dataDir, 'runtime.sqlite'))
+    initializeRuntimeDatabase(db)
+    db.prepare('DELETE FROM schema_version WHERE version = ?').run(26)
+    const frontendDescription = db
+      .prepare("SELECT description FROM role_templates WHERE id = 'frontend_engineer'")
+      .pluck()
+      .get() as string
+    db.prepare("UPDATE role_templates SET description = '用户自定义后端职责' WHERE id = 'backend_engineer'").run()
+    db.prepare("UPDATE role_templates SET description = ? WHERE id = 'frontend_engineer'").run(
+      frontendDescription.replace(
+        '\n完成汇报首行必须写 `状态：success`；未完成、有阻塞或尚未验证时写 `状态：partial`，不得伪报完成。',
+        ''
+      )
+    )
+
+    initializeRuntimeDatabase(db)
+
+    const descriptions = Object.fromEntries(
+      (
+        db
+          .prepare(
+            "SELECT id, description FROM role_templates WHERE id IN ('frontend_engineer', 'backend_engineer', 'test_engineer')"
+          )
+          .all() as Array<{ description: string; id: string }>
+      ).map((role) => [role.id, role.description])
+    )
+    expect(descriptions.frontend_engineer).toContain('状态：success')
+    expect(descriptions.backend_engineer).toBe('用户自定义后端职责')
+    expect(descriptions.test_engineer).toContain('没有已登记证据时验收门不会放行')
+    expect(db.prepare('SELECT version FROM schema_version WHERE version = ?').get(26)).toEqual({
+      version: 26,
+    })
+    db.close()
+  })
 })

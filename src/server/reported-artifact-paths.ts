@@ -36,6 +36,16 @@ const resolveArtifactReference = (
 }
 
 /**
+ * Confirms that an evidence path resolves to a real file inside its project.
+ * Lifecycle gates use this stricter check so a fabricated artifact string cannot
+ * stand in for an actual test report or screenshot.
+ */
+export const isReportedArtifactAvailable = (workspacePath: string, artifact: string): boolean => {
+  const workspaceRoot = realpathSync(workspacePath)
+  return resolveArtifactReference(workspaceRoot, workspaceRoot, artifact) !== null
+}
+
+/**
  * Reads visual files registered by a reported Markdown deliverable. Stitch
  * commonly records several generated screens in DESIGN.md while the final team
  * report names only that index document, so these links must join the report's

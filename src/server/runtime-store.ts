@@ -5,6 +5,11 @@ import type {
   WorkflowAction,
   WorkflowThread,
 } from '../shared/workflow-types.js'
+import {
+  evaluateAcceptanceReadiness,
+  evaluateDevelopmentReadiness,
+  type WorkflowEvidenceEntry,
+} from '../shared/workflow-readiness.js'
 import type { AgentManager } from './agent-manager.js'
 import type { AgentLaunchConfigInput, PersistedAgentRun } from './agent-run-store.js'
 import type { LiveAgentRun } from './agent-runtime-types.js'
@@ -12,6 +17,7 @@ import type { DispatchRecord, ListDispatchesOptions } from './dispatch-ledger-st
 import { ConflictError } from './http-errors.js'
 import type { RecoveryMessage } from './message-log-store.js'
 import type { PtyOutputBus } from './pty-output-bus.js'
+import { isReportedArtifactAvailable } from './reported-artifact-paths.js'
 import { createSystemWorkflowMessage } from './runtime-message-builders.js'
 import { createRuntimeStoreLifecycle, createRuntimeStoreServices } from './runtime-store-helpers.js'
 import type { SettingsStore } from './settings-store.js'
@@ -223,6 +229,28 @@ export const createRuntimeStore = (options: RuntimeStoreOptions = {}): RuntimeSt
             return actor?.name.includes(roleHint) === true
           })
         if (!hasArtifact) throw new ConflictError(`${roleHint}方案尚未提交可确认产物`)
+      }
+      if (action === 'start_acceptance' || action === 'complete_project') {
+        const evidence = services.messageLogStore
+          .listConversationMessages(workspaceId, 'execution')
+          .map((message): WorkflowEvidenceEntry => {
+            const actorId = message.fromAgentId ?? message.workerId
+            return {
+              actorName:
+                workspace.agents.find((agent) => agent.id === actorId)?.name ?? actorId,
+              artifacts: message.artifacts.filter((artifact) =>
+                isReportedArtifactAvailable(workspace.summary.path, artifact)
+              ),
+              status: message.status,
+              text: message.text,
+              type: message.type === 'system_workflow' ? 'system' : message.type,
+            }
+          })
+        const readiness =
+          action === 'start_acceptance'
+            ? evaluateDevelopmentReadiness(evidence)
+            : evaluateAcceptanceReadiness(evidence)
+        if (!readiness.ready) throw new ConflictError(readiness.blockers.join('；'))
       }
       const transition = services.workflowStore.transition(workspaceId, action)
       services.messageLogStore.insertMessage(

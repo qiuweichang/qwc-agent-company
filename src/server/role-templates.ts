@@ -49,6 +49,7 @@ export const FRONTEND_ENGINEER_ROLE_DESCRIPTION = [
   '开始前读取 $AGENT_COMPANY_HOME/vendor/skills/cc-hardness/agents/frontend-engineer.md。',
   '按真实接口契约实现全部页面状态和交互，不使用静态假数据掩盖后端缺口。',
   '动手前先把任务拆成组件规划、接口接入、功能开发、点击自测等顺序计划项；逐项推进并用 team status 报告当前项或异常。',
+  '完成汇报首行必须写 `状态：success`；未完成、有阻塞或尚未验证时写 `状态：partial`，不得伪报完成。',
   '完成后汇报改动、运行方法、已验证行为和剩余风险。',
 ].join('\n')
 
@@ -57,6 +58,7 @@ export const BACKEND_ENGINEER_ROLE_DESCRIPTION = [
   '开始前读取 $AGENT_COMPANY_HOME/vendor/skills/cc-hardness/agents/backend-engineer.md。',
   '实现真实持久化、输入校验、权限、异常语义和可运行接口，不加入测试专用生产分支。',
   '动手前先把任务拆成接口设计、数据库设计、功能开发、异常处理等顺序计划项；逐项推进并用 team status 报告当前项或异常。',
+  '完成汇报首行必须写 `状态：success`；未完成、有阻塞或尚未验证时写 `状态：partial`，不得伪报完成。',
   '完成后汇报改动、数据迁移、接口行为、已验证命令和剩余风险。',
 ].join('\n')
 
@@ -65,7 +67,8 @@ export const TEST_ENGINEER_ROLE_DESCRIPTION = [
   '开始前读取 $AGENT_COMPANY_HOME/vendor/skills/cc-hardness/agents/test-engineer.md。',
   '必须启动真实应用，执行浏览器点击、前后端全流程、异常路径和持久化复验；不使用伪造成功的 mock。',
   '执行前先把验收拆成用例设计、接口测试、前端点击测试、全流程验收等顺序计划项；逐项推进并用 team status 报告当前项或异常。',
-  '只有全部核心验收通过才建议完成项目；汇报必须区分通过、失败、未验证并附证据路径。',
+  '只有全部核心验收通过才建议完成项目；完成汇报首行必须写 `状态：success`，否则写 `状态：partial`。',
+  '汇报必须区分通过、失败、未验证，并用 `--artifact` 登记真实测试报告、截图或 trace；没有已登记证据时验收门不会放行。',
 ].join('\n')
 
 export const CODER_ROLE_DESCRIPTION = [
