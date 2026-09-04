@@ -1,4 +1,5 @@
 import type { AgentSummary, WorkspaceSummary } from '../shared/types.js'
+import type { ProjectWorkflowState } from '../shared/workflow-types.js'
 import type { PersistedAgentRun } from './agent-run-store.js'
 import type { MessageLogHandle, MessageLogRecord, RecoveryMessage } from './message-log-store.js'
 
@@ -8,6 +9,8 @@ export interface RestartPolicyInput {
     agents: AgentSummary[]
     summary: WorkspaceSummary
   }
+  /** Returns the durable lifecycle state that takes precedence over stale workspace notes. */
+  getWorkflowState: (workspaceId: string) => ProjectWorkflowState
   insertMessage: (record: MessageLogRecord) => MessageLogHandle
   listAgentRuns: (agentId: string) => PersistedAgentRun[]
   listMessagesForRecovery: (workspaceId: string, sinceMs: number) => RecoveryMessage[]

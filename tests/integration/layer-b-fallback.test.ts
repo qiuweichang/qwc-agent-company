@@ -406,12 +406,28 @@ describe('Layer B fallback integration', () => {
       const bob = await createWorkerViaHttp(server.baseUrl, cookie, workspace.id, 'Bob', 'tester')
 
       await server.store.dispatchTask(workspace.id, bob.id, '审查 Phase 3 SSE schema 缺口')
+      server.store.recordUserInput(
+        workspace.id,
+        orchestratorId(workspace.id),
+        '开始前后端派发',
+        'execution'
+      )
+      server.store.getWorkflowState(workspace.id)
 
       const db = new Database(join(server.dataDir, 'runtime.sqlite'))
       db.prepare("UPDATE messages SET created_at = ? WHERE type = 'send' AND worker_id = ?").run(
         Date.now() - 2 * 60 * 60 * 1000,
         bob.id
       )
+      db.prepare("UPDATE messages SET created_at = ? WHERE type = 'user_input'").run(
+        Date.now() - 2 * 60 * 60 * 1000
+      )
+      db.prepare(
+        `UPDATE project_workflows
+         SET stage = 'development', active_thread = 'execution', requirements_frozen = 1,
+             architecture_status = 'approved', ui_status = 'approved'
+         WHERE workspace_id = ?`
+      ).run(workspace.id)
       db.close()
 
       await configureWorkerViaHttp(
@@ -454,6 +470,10 @@ describe('Layer B fallback integration', () => {
         expect(state.output).toContain('## 当前未完成任务')
         expect(state.output).toContain('Bob')
         expect(state.output).toContain('审查 Phase 3 SSE schema 缺口')
+        expect(state.output).toContain('开始前后端派发')
+        expect(state.output).toContain('## 当前权威流程状态（数据库）')
+        expect(state.output).toContain('- stage: development')
+        expect(state.output).toContain('- active_thread: execution')
       })
       server.store.writeRunInput(secondRun.runId, '__HIVE_TEST_EXIT__\n')
       await waitFor(async () => {

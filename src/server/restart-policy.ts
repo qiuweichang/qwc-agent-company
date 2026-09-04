@@ -8,8 +8,6 @@ import {
 } from './restart-policy-support.js'
 import { createSystemRecoverySummaryMessage } from './runtime-message-builders.js'
 
-const RECOVERY_WINDOW_MS = 60 * 60 * 1000
-
 export interface RestartPolicy {
   injectPostStartMessage: (input: {
     agentId: string
@@ -29,6 +27,7 @@ export const createNoopRestartPolicy = (): RestartPolicy => ({
 export const createRestartPolicy = ({
   deleteMessage,
   getWorkspaceSnapshot,
+  getWorkflowState,
   insertMessage,
   listAgentRuns,
   listMessagesForRecovery,
@@ -45,16 +44,18 @@ export const createRestartPolicy = ({
       (item) => item.role !== 'orchestrator' && item.id !== agentId
     )
     const tasksContent = readTasks(snapshot.summary.path)
+    const workflow = getWorkflowState(workspace.id)
 
     if (startConfig.resumedSessionId) return true
 
     const text = buildRecoverySummary({
       agent,
       allTaskMessages: listMessagesForRecovery(workspace.id, 0),
-      messages: listMessagesForRecovery(workspace.id, Date.now() - RECOVERY_WINDOW_MS),
+      messages: listMessagesForRecovery(workspace.id, 0),
       tasksContent,
       workers,
       workspace,
+      workflow,
     })
     writeSystemMessage({
       deleteMessage,

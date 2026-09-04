@@ -1,3 +1,4 @@
+import type { ProjectWorkflowState } from '../shared/workflow-types.js'
 import type { AgentRunStorePort } from './agent-runtime-ports.js'
 import type { MessageLogHandle, MessageLogRecord, RecoveryMessage } from './message-log-store.js'
 import { createRestartPolicy } from './restart-policy.js'
@@ -10,6 +11,7 @@ export const buildRuntimeRestartPolicy = ({
   messageLogStore,
   tasksFileService,
   workspaceStore,
+  workflowStore,
 }: {
   agentRunStore: Pick<AgentRunStorePort, 'listAgentRuns'>
   messageLogStore: {
@@ -19,10 +21,12 @@ export const buildRuntimeRestartPolicy = ({
   }
   tasksFileService: Pick<TasksFileService, 'readTasks'>
   workspaceStore: Pick<WorkspaceStore, 'getWorkspaceSnapshot'>
+  workflowStore: { get: (workspaceId: string) => ProjectWorkflowState }
 }) =>
   createRestartPolicy({
     deleteMessage: messageLogStore.deleteMessage,
     getWorkspaceSnapshot: workspaceStore.getWorkspaceSnapshot,
+    getWorkflowState: workflowStore.get,
     insertMessage: messageLogStore.insertMessage,
     listAgentRuns: agentRunStore.listAgentRuns,
     listMessagesForRecovery: messageLogStore.listMessagesForRecovery,

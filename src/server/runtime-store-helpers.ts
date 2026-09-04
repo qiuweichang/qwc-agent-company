@@ -91,6 +91,7 @@ export const createRuntimeStoreServices = (
     messageLogStore,
     tasksFileService,
     workspaceStore,
+    workflowStore,
   })
   const workerOutputTracker = options.agentManager
     ? createWorkerOutputTracker(options.agentManager.getOutputBus())

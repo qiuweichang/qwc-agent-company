@@ -1,4 +1,5 @@
 import type { AgentSummary, WorkspaceSummary } from '../shared/types.js'
+import type { ProjectWorkflowState } from '../shared/workflow-types.js'
 
 import { getHiveTeamRules } from './hive-team-guidance.js'
 import type { RecoveryMessage } from './message-log-store.js'
@@ -11,8 +12,22 @@ const formatUserInputs = (messages: RecoveryMessage[]) => {
   const userInputs = messages.filter((message) => message.type === 'user_input')
   return userInputs.length > 0
     ? userInputs.slice(-5).map((message) => `- user: ${message.text}`)
-    : ['- （最近 1 小时没有新的 user_input）']
+    : ['- （项目尚无 user_input）']
 }
+
+/**
+ * Formats the database-backed lifecycle state for a restarted CLI agent. This
+ * state is authoritative because `.hive/tasks.md` can lag behind a Web gate
+ * transition or an interrupted manager run.
+ */
+const formatWorkflowState = (workflow: ProjectWorkflowState) => [
+  `- stage: ${workflow.stage}`,
+  `- active_thread: ${workflow.activeThread}`,
+  `- requirements_frozen: ${workflow.requirementsFrozen}`,
+  `- architecture_status: ${workflow.architectureStatus}`,
+  `- ui_status: ${workflow.uiStatus}`,
+  '- 以上数据库流程状态为权威事实；若与 `.hive/tasks.md` 冲突，必须按这里的状态继续并同步修正任务文件。',
+]
 
 const formatTaskEvents = (messages: RecoveryMessage[], agent: AgentSummary) => {
   const taskEvents = messages.filter(
@@ -96,6 +111,7 @@ export const buildRecoverySummary = ({
   tasksContent,
   workers,
   workspace,
+  workflow,
 }: {
   agent: AgentSummary
   allTaskMessages?: RecoveryMessage[]
@@ -103,14 +119,18 @@ export const buildRecoverySummary = ({
   tasksContent: string
   workers: AgentSummary[]
   workspace: WorkspaceSummary
+  workflow: ProjectWorkflowState
 }) =>
   wrapSystemMessage(
     [
       `你是 ${workspace.name} 的 ${agent.name}（${agent.role}）。`,
       '你刚被 Hive 重启了，且无法通过原生 session resume 恢复。下面是接力上下文。',
       '',
-      '## 最近 1 小时与 user 的对话',
+      '## 最近与 user 的对话',
       ...formatUserInputs(messages),
+      '',
+      '## 当前权威流程状态（数据库）',
+      ...formatWorkflowState(workflow),
       '',
       getTaskSectionTitle(agent),
       ...formatTaskEvents(messages, agent),
@@ -128,7 +148,7 @@ export const buildRecoverySummary = ({
       ...getHiveTeamRules(agent),
       '',
       agent.role === 'orchestrator'
-        ? '请基于最近一条 user 指令继续。需要派单时必须通过 Bash/Shell 工具实际执行 team send，并以命令返回的 dispatch_id 为成功依据；禁止只打印命令文本。'
+        ? '请基于最近一条 user 指令和权威流程状态继续。若 stage=development 且前后端没有未完成派单，必须立即通过 Bash/Shell 工具实际执行 team send；以命令返回的 dispatch_id 为成功依据，禁止只打印命令文本。'
         : '请基于此继续。如果不确定，问 user。',
     ].join('\n')
   )
